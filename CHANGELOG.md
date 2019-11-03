@@ -1,5 +1,9 @@
 # Change Log
 
+## [Unreleased] - 2019-11-02
+### Add
+- merge! and fan!
+
 ## [Unreleased] - 2019-10-31
 ### Add
 - Blocking implementations separate from threads creation.

@@ -143,3 +143,39 @@
              (recur))
            (recur)))))))
 
+(defn merge!
+  [from to]
+  (let [o (a/merge from)]
+    (a/pipe o to)))
+
+(defn fan!
+  "Partition values from `from` by `f` and apply `xf` to each partition.
+  Useful for stateful transducer operating on streaming partitioned data
+  when the partitions aren't know a priori.
+
+  Warnings and caveats:
+  creates a new channel and go block per new partition.
+  Very bad for unbounded inputs."
+  [f xf from to]
+  (let [ma (atom {})
+        build-rec
+        (fn [u]
+          (fn [v]
+            (new clojure.lang.MapEntry u v)))
+        get-chan!
+        (fn [v]
+          (let [u (f v)]
+            (or (get @ma u)
+                (let [xf- (comp xf (map (build-rec u)))
+                      o (a/chan 1 xf-)]
+                  (swap! ma assoc u o)
+                  (a/pipe o to false)
+                  o))))]
+    (a/go-loop []
+      (let [v (a/<! from)]
+        (if (nil? v)
+          (let [cs (vals @ma)]
+            (merge! cs to)
+            (doseq [c cs] (a/close! c)))
+          (let [o (get-chan! v)]
+            (when (a/>! o v) (recur))))))))
