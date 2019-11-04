@@ -1,5 +1,12 @@
 # Change Log
 
+## [0.0.2-alpha] - 2019-11-04
+### Version
+- Bump for release
+
+### Added
+- Usage in README
+
 ## [Unreleased] - 2019-11-02
 ### Add
 - merge! and fan!

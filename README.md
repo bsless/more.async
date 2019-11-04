@@ -4,6 +4,58 @@ A Clojure library designed to provide more abstractions and means to communicate
 
 ## Usage
 
+### Dependency
+
+Add the following dependency in your leiningen project:
+```clojure
+[bsless/more.async "0.0.2-alpha"]
+```
+
+### Require
+
+```clojure
+(require '[clojure.core.async :as a]
+         '[clojure.more.async :as ma])
+```
+
+### Use
+
+For example, with [kinsky's](https://github.com/pyr/kinsky) kafka client:
+
+#### Channel Producer
+
+```
+(require '[kinsky.client :as client])
+
+(defn make-consumer
+  []
+  (let [c (client/consumer {:bootstrap.servers "localhost:9092"
+                            :group.id          "mygroup"}
+                           (client/keyword-deserializer)
+                           (client/edn-deserializer))]
+    (client/subscribe! c "account")
+    c))
+
+(def msg-ch (a/chan))
+
+(ma/produce-bound-blocking
+ msg-ch
+ #(client/poll! % 100)
+ make-consumer
+ client/close!)
+```
+
+#### Channel Consumer
+
+```
+(def out-ch (a/chan))
+
+(let [p (client/producer {:bootstrap.servers "localhost:9092"}
+                         (client/keyword-serializer)
+                         (client/edn-serializer))
+      topic "account"]
+  (ma/consume out-ch #(client/send! p topic %)))
+```
 
 ## License
 
