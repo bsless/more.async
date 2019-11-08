@@ -179,3 +179,44 @@
             (doseq [c cs] (a/close! c)))
           (let [o (get-chan! v)]
             (when (a/>! o v) (recur))))))))
+
+(defn control
+  "Wraps f with control function cf such that f will be invoked when:
+  cf returns a truthy value for a value taken from ctl channel or
+  there is no signal on ctl channel to take immidiately"
+  [f cf ctl]
+  (fn []
+    (if-let [sig (a/poll! ctl)]
+      (when (cf sig) (f))
+      (f))))
+
+(defmacro interrupt-controls
+  [f ctl & cfs-es-ehs]
+  {:pre [(zero? (rem (count cfs-es-ehs) 3))]}
+  (let [catches
+        (for [[cf e eh] (partition 3 cfs-es-ehs)]
+          `(catch ~e t#
+             (if-let [sig# (a/poll! ~ctl)]
+               (when (~cf sig#) (~f))
+               (~eh t#))))
+        body (concat
+              `(try
+                 (~f))
+              catches)
+        fname (gensym "control__")]
+    `(fn ~fname [] ~body)))
+
+(defmacro interrupt-control
+  "Like `control` but only checks ctl channel if f throws.
+  takes an optional seq of exceptions and exception handlers to
+  handle different exceptions which can be thrown by f."
+  ([f ctl]
+   (let [cf (constantly nil)]
+     `(interrupt-control ~f ~cf ~ctl Throwable throw)))
+  ([f cf ctl]
+   `(interrupt-control ~f ~cf ~ctl Throwable throw))
+  ([f cf ctl & es-ehs]
+   {:pre [(zero? (rem (count es-ehs) 2))]}
+   (let [cfs-es-ehs
+         (mapcat (fn [[x y]] [cf x y]) (partition 2 es-ehs))]
+     `(interrupt-controls ~f ~ctl ~@cfs-es-ehs))))
