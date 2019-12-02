@@ -28,6 +28,13 @@
          (when close?
            (a/close! ch)))))))
 
+(defn produce-bound-blocking*
+  [ch f close? pre post]
+  (let [pv (pre)
+        g (fn [] (f pv))]
+    (produce-blocking* ch g close?)
+    (post pv)))
+
 (defn produce-blocking
   "Like `produce-blocking*` but takes a thread."
   ([ch f] (produce ch f true))
