@@ -1,0 +1,353 @@
+* The Mess We're In
+
+  Let's say you write backend software in a micro-services architecture.
+
+  You've watched The Langauge Of The System so you know queues are good
+  and you use them to communicate between your services.
+
+  You've got this queuing business nailed down so you know they're also good
+  *inside* your services. So you break them apart to processes, put queues between
+  them, and you're off to the races.
+  
+** What We've Forgotten
+
+   We forgot one of the golden rules, KISS: Keep It Simple Stupid.
+   Writing simple programs is not trivial. Clojure comes with some pretty
+   powerful tools to help us write simple systems, especially micro services,
+   namely core.async and pipelines.
+   
+   Pipelines make our lives easier, by abstracting away the relationship between
+   channels (queues, decoupling time and place) and computation.
+   Just plug them into the pipeline, and you're good to go.
+
+   If you're doing data processing, *you should be using pipelines*.
+
+   Pipelines also imply correct and in-order shutdown of the processes.
+   
+   However, we still manage to muck it all up, especially when getting in
+   to the first pipeline, out of the final pipeline, and mixing processing
+   with IO.
+   
+   When we come to all of these interactions with the world, we complect all
+   the things pipelines and channels were meant to help us simplify.
+
+   What follows is an attempt to suggest a better way.
+
+** The Simple, The Easy and The Ugly
+   
+*** Producing into channels
+
+    Ready to read from one queue, Kafka, and write to another, like a channel?
+    Here we go:
+   
+    assuming we have some output channel, ~out~,
+
+    #+begin_src clojure
+      (future
+        (let [config (some-mess ... )]
+          (with-open [c (consumer config deserializer deserializer)]
+            (while true
+              (doseq [rec (map read-record (poll! c))]
+                (a/>!! out rec))))))
+    #+end_src
+   
+    You write this little bit of code and feel pretty good about yourself.
+    Then in the code review you get some feedback. You don't handle exceptions!
+    You're running in an infinite loop! And like a good programmer, you rush in
+    to implement the good feedback you've received:
+
+    #+begin_src clojure
+      (future
+        (let [config (some-mess ... )]
+          (try
+            (with-open [c (consumer config deserializer deserializer)]
+              (while @running?
+                (try
+                  (doseq [rec (map read-record (poll! c))]
+                    (a/>!! out rec))
+                  (catch Exception e
+                    (println e))))
+              (a/close! out))
+            (catch Exception e
+              (println 'ERROR "failed to create consumer" e)))))
+    #+end_src
+   
+    Now this code is way more "correct", but is certainly less aesthetic,
+    is harder to reason about, and very procedural. Shutting it down is done
+    by swapping an atom, which will probably be handled by a framework like
+    component or mount. You just wanted to read from Kafka and shove the data
+    into a channel, and you bought yourself a framework. How did that happen?
+
+    It's a common behavior in ~core.async~ processes such as pipelines, that
+    when the source channel is closed, once everything is wrapped up in the
+    computational process, the downstream channel is closed as well.
+    That way, the entire computational process shuts down gracefully.
+    To maintain this expectation we'll also need to close the channel 
+    when we're done producing to it.
+   
+    What we're doing wrong here is mixing logistics, policy and implementation.
+    There's barely anything to do between the Kafka consumer and the channel.
+    Why do they need to be defined and handled in the same scope?
+
+    First, let's introduce a transducer on the output channel to save ourselves
+    a bit of logistics
+
+    #+begin_src clojure
+      (def out (a/chan size cat))
+
+      ;;; Now this:
+      (doseq [rec (map read-record (poll! c))]
+        (a/>!! out rec))
+
+      ;;; Can become this:
+      (a/>!! out (map read-record (poll! c)))
+    #+end_src
+   
+    If you don't know transducers, now is the time to go read about them,
+    as they're a powerful weapon in your fight against ungainly code.
+   
+    Next, we can see that the invocation of calling a function can be factored out:
+   
+    #+begin_src clojure
+      (future
+        (let [config (some-mess ... )]
+          (try
+            (with-open [c (consumer config deserializer deserializer)]
+              (let [f (fn [] (map read-record (poll! c)))]
+                (while @running?
+                  (try
+                    (a/>!! out (f))
+                    (catch Exception e
+                      (println e)))))
+              (a/close! out))
+            (catch Exception e
+              (println 'ERROR "failed to create consumer" e)))))
+    #+end_src
+   
+    Same goes for the entirety of handling the exceptions:
+   
+    #+begin_src clojure
+      (defn handle
+        [f handler]
+        (fn []
+          (try
+            (f)
+            (catch Exception e
+              (handler e)))))
+
+      (future
+        (let [config (some-mess ... )
+              handler println]
+          (try
+            (with-open [c (consumer config deserializer deserializer)]
+              (let [f (handle (fn [] (map read-record (poll! c))) handler)]
+                (while @running?
+                  (when-let [v (f)]
+                    (a/>!! out v))))
+              (a/close! out))
+            (catch Exception e
+              (println 'ERROR "failed to create consumer" e)))))
+    #+end_src
+   
+    Now we're at a point where our "event loop" is completely decoupled from anything
+    we could decouple it, so we can factor it out to a function:
+
+    #+begin_src clojure
+      (defn handle
+        [f handler]
+        (fn []
+          (try
+            (f)
+            (catch Exception e
+              (handler e)))))
+
+      (defn produce
+        [f to running?]
+        (while @running?
+          (when-let [v (f)]
+            (a/>!! out v)))
+        (a/close! to))
+
+      (future
+        (let [config (some-mess ... )
+              handler println]
+          (try
+            (with-open [c (consumer config deserializer deserializer)]
+              (let [f (handle (fn [] (map read-record (poll! c))) handler)]
+                (produce f out running?)))
+            (catch Exception e
+              (println 'ERROR "failed to create consumer" e)))))
+    #+end_src
+   
+    All that's left is to factor out the remaining mess:
+
+    #+begin_src clojure
+      (def out (a/chan size (comp cat (map read-record))))
+
+      (defn poller
+        [consumer eh]
+        (handle (fn [] (poll! consumer)) eh))
+
+      (defn init-consume
+        [consumer-fn running? eh ceh]
+        (future
+          (try
+            (with-open [c (consumer-fn)]
+              (produce (poller c eh) out running?))
+            (catch Exception e
+              (ceh e)))))
+    #+end_src
+
+    This is very close to how produce is implemented in ~more.async~.
+
+**** Side note - Dependency injection and closure
+     
+     Notice many functions in this implementation return other functions or
+     encapsulate other parameters and hide them from other functions which
+     consume them. They become subsumed into the returned functions 
+     as behaviors.
+
+     One exception to that is the Kafka Consumer, but unfortunately it's 
+     a stateful Java object and not modeled in pure data, so we're forced
+     to work with what we've got.
+
+*** The secret lives of Databases
+    
+    It is a truism that what all programs do is take data from some place,
+    manipulate it, and pass it to another place.
+
+    This is true for database usage in out programs. Our data is on its way
+    somewhere, and along the way we query the database, collect more data,
+    process it, and pass it either forward (like towards Kafka) or back,
+    Like a user's query to server.
+
+    But how can we perform our queries in a more data oriented way?
+    
+    Let's consider the simple case of data propagating forward through a
+    computational pipeline.
+    We usually see database access happening willy-nilly all over the code,
+    Passed in as a dependency via Component, or accessed globally via Mount.
+    But there's got to be a better way.
+    We can always separate our computation around database to three stages:
+    
+    1. preparing the query - pure data.
+    2. Executing the query - pure IO.
+    3. Processing the returned data + friends - pure data.
+
+    This thinking allows us to model our usage in a way which separates IO
+    completely from processing. All we have to do is make sure we pass the
+    data required to complete the computation along to the 3rd stage of the pipe:
+
+    #+begin_src clojure
+      (def prepare-xf
+        (map
+         (comp
+          (fn prepare-query
+            [data]
+            {:query (build-query data)
+             :data data})
+          process-data)))
+
+      (a/pipeline n to-db prepare-xf input-channel)
+
+      (def db-xf
+        (map
+         (fn [{:keys [query data]}]
+           (let [result (execute! query)]
+             {:data data
+              :result result}))))
+
+      (a/pipeline-blocking m post-process db-xf to-db)
+
+      (a/pipeline k out-channel process-results-xf post-process)
+    #+end_src
+
+*** Here to serve
+
+    What about the dreaded use case of having to serve requests which might
+    require values from a database? How do we maintain asynchrony nice simple
+    pipelines as much as possible?
+
+    Thanks to [[https:stackoverflow.com/questions/24980014/can-i-make-a-fully-non-blocking-backend-application-with-http-kit-and-core-async][some heroes]] we can begin to make sense of this riddle by looking
+    at the handler:
+    
+    #+begin_src clojure
+      (defn my-handle! [req]
+        (http-kit/with-channel req channel
+          (a/go
+            (let [my-db-resource (a/thread (fetch-my-db-resource))
+                  my-web-resource (a/thread (fetch-my-web-resource))
+                  response (construct-my-response (a/<! my-db-resource)
+                                                  (a/<! my-web-resource))]
+              (send! channel response)
+              (close channel)))))
+    #+end_src
+    
+    Now, that's nice and good, but everything happens in the handle, and there
+    might be chains of processing and querying required. So, how do we modify
+    this beauty?
+
+    #+begin_src clojure
+      (defn my-handle! [req]
+        (http-kit/with-channel req channel
+          (a/go
+            (let [p (a/chan 1)
+                  payload {:req req :p p}]
+              (a/>! requests payload)
+              (let [response (a/<! p)]
+                (send! channel response)
+                (close channel))))))
+    #+end_src
+    
+    We prepare a record containing the incoming request, and a port to read
+    the response from, which will be sent to the client.
+    
+    Only at the very end of the pipeline, would we need to do something akin to:
+
+    #+begin_src clojure
+      (a/go-loop []
+        (let [m (a/<! final-chan)]
+          (when m
+            (let [{:keys [response p]}]
+              (a/put! p response)))))
+    #+end_src
+    
+    That way, we use the channel as a promise while benefiting from go-blocks'
+    parking.
+
+*** Even more async, getting rid of the atom.
+    
+    Did you know core.async has a function, ~poll!~, which:
+    
+    #+begin_quote
+    Takes a val from port if it's possible to do so immediately.
+    Never blocks. Returns value if successful, nil otherwise.
+    #+end_quote
+    
+    Now, that's interesting. We could use another channel to signal control.
+    This also allows us to pass in more signals besides Boolean run/don't run.
+
+    A naive implementation, taking a function, control function and 
+    control channel will look like so:
+
+    #+begin_src clojure
+      (defn control
+        "Wraps f with control function cf such that f will be invoked when:
+        cf returns a truthy value for a value taken from ctl channel or
+        there is no signal on ctl channel to take immidiately"
+        [f cf ctl]
+        (fn []
+          (if-let [sig (a/poll! ctl)]
+            (when (cf sig) (f))
+            (f))))
+    #+end_src
+    
+    In case of our Kafka Consumer, it's the programmer's responsibility to 
+    close over the Consumer object in both functions, but it's not too 
+    complicated.
+
+    That way we'll just have to make sure to return a false value in case we
+    want to stop, and the loop will not iterate again.
+
+    There is also another implementation based on interrupts and exception 
+    handling, if polling and control channel each iteration is too costly.
