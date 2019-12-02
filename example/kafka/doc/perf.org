@@ -1,0 +1,121 @@
+Constructing:
+
+#+begin_src clojure
+  (criterium.core/quick-bench
+   {:value (.value ^org.apache.kafka.clients.consumer.ConsumerRecord rec)
+    :key (.key ^org.apache.kafka.clients.consumer.ConsumerRecord rec)
+    :offset (.offset ^org.apache.kafka.clients.consumer.ConsumerRecord rec)
+    :partition (.partition ^org.apache.kafka.clients.consumer.ConsumerRecord rec)
+    :topic (.topic ^org.apache.kafka.clients.consumer.ConsumerRecord rec)})
+
+  ;; Evaluation count : 11762112 in 6 samples of 1960352 calls.
+  ;;              Execution time mean : 40.587151 ns
+  ;;     Execution time std-deviation : 2.745360 ns
+  ;;    Execution time lower quantile : 39.068937 ns ( 2.5%)
+  ;;    Execution time upper quantile : 45.279098 ns (97.5%)
+  ;;                    Overhead used : 9.529347 ns
+
+  (criterium.core/quick-bench (->record rec))
+
+  ;; Evaluation count : 23618070 in 6 samples of 3936345 calls.
+  ;;              Execution time mean : 16.554924 ns
+  ;;     Execution time std-deviation : 0.312461 ns
+  ;;    Execution time lower quantile : 16.209272 ns ( 2.5%)
+  ;;    Execution time upper quantile : 17.005179 ns (97.5%)
+  ;;                    Overhead used : 9.529347 ns
+
+  (defrecord Foo [k v offset part topic])
+  (criterium.core/quick-bench
+   (->Foo
+    (.key ^org.apache.kafka.clients.consumer.ConsumerRecord rec)
+    (.value ^org.apache.kafka.clients.consumer.ConsumerRecord rec)
+    (.offset ^org.apache.kafka.clients.consumer.ConsumerRecord rec)
+    (.partition ^org.apache.kafka.clients.consumer.ConsumerRecord rec)
+    (.topic ^org.apache.kafka.clients.consumer.ConsumerRecord rec)))
+
+  ;; Evaluation count : 17318244 in 6 samples of 2886374 calls.
+  ;;              Execution time mean : 25.656239 ns
+  ;;     Execution time std-deviation : 0.543691 ns
+  ;;    Execution time lower quantile : 25.052737 ns ( 2.5%)
+  ;;    Execution time upper quantile : 26.273478 ns (97.5%)
+  ;;                    Overhead used : 9.529347 ns
+
+#+end_src
+
+defining m, my-rec and foo respectively
+#+begin_src clojure
+  ;;; Reading value from map
+
+  (criterium.core/quick-bench (get m :value))
+  ;; Evaluation count : 27166074 in 6 samples of 4527679 calls.
+  ;;              Execution time mean : 13.372416 ns
+  ;;     Execution time std-deviation : 0.717067 ns
+  ;;    Execution time lower quantile : 12.785333 ns ( 2.5%)
+  ;;    Execution time upper quantile : 14.388562 ns (97.5%)
+  ;;                    Overhead used : 9.529347 ns
+
+  (criterium.core/quick-bench (:value m))
+  ;; Evaluation count : 18414762 in 6 samples of 3069127 calls.
+  ;;              Execution time mean : 24.218844 ns
+  ;;     Execution time std-deviation : 1.443962 ns
+  ;;    Execution time lower quantile : 23.031274 ns ( 2.5%)
+  ;;    Execution time upper quantile : 26.482794 ns (97.5%)
+  ;;                    Overhead used : 9.529347 ns
+
+  ;;; Reading value through reify
+
+  (criterium.core/quick-bench (value* my-rec))
+  ;; Evaluation count : 31321806 in 6 samples of 5220301 calls.
+  ;;              Execution time mean : 10.034543 ns
+  ;;     Execution time std-deviation : 0.690295 ns
+  ;;    Execution time lower quantile : 9.530832 ns ( 2.5%)
+  ;;    Execution time upper quantile : 11.217350 ns (97.5%)
+  ;;                    Overhead used : 9.529347 ns
+
+  ;;; Reading value from defrecord
+
+  (criterium.core/quick-bench (get foo :value))
+  ;; Evaluation count : 20296494 in 6 samples of 3382749 calls.
+  ;;              Execution time mean : 20.671595 ns
+  ;;     Execution time std-deviation : 0.785445 ns
+  ;;    Execution time lower quantile : 19.780804 ns ( 2.5%)
+  ;;    Execution time upper quantile : 21.476190 ns (97.5%)
+  ;;                    Overhead used : 9.529347 ns
+
+  (criterium.core/quick-bench (:value foo))
+  ;; Evaluation count : 15611820 in 6 samples of 2601970 calls.
+  ;;              Execution time mean : 30.843779 ns
+  ;;     Execution time std-deviation : 4.480429 ns
+  ;;    Execution time lower quantile : 28.045962 ns ( 2.5%)
+  ;;    Execution time upper quantile : 38.482173 ns (97.5%)
+  ;;                    Overhead used : 9.529347 ns
+
+  ;;; Reading value directly from ConsumerRecord
+
+  (criterium.core/quick-bench (.value ^org.apache.kafka.clients.consumer.ConsumerRecord rec))
+  ;; Evaluation count : 38880066 in 6 samples of 6480011 calls.
+  ;;              Execution time mean : 5.398245 ns
+  ;;     Execution time std-deviation : 0.490455 ns
+  ;;    Execution time lower quantile : 4.582028 ns ( 2.5%)
+  ;;    Execution time upper quantile : 5.825208 ns (97.5%)
+  ;;                    Overhead used : 9.529347 ns
+
+  ;;; Reading value via memfn from ConsumerRecord
+
+  (def f (memfn ^org.apache.kafka.clients.consumer.ConsumerRecord value))
+  (criterium.core/quick-bench (f rec))
+  ;; Evaluation count : 30000000 in 6 samples of 5000000 calls.
+  ;;              Execution time mean : 9.783398 ns
+  ;;     Execution time std-deviation : 1.307745 ns
+  ;;    Execution time lower quantile : 8.728868 ns ( 2.5%)
+  ;;    Execution time upper quantile : 11.635885 ns (97.5%)
+  ;;                    Overhead used : 9.529347 ns
+
+  (criterium.core/quick-bench (.value  rec))
+  ;; Evaluation count : 457284 in 6 samples of 76214 calls.
+  ;;              Execution time mean : 1.336499 µs
+  ;;     Execution time std-deviation : 32.333218 ns
+  ;;    Execution time lower quantile : 1.305727 µs ( 2.5%)
+  ;;    Execution time upper quantile : 1.388630 µs (97.5%)
+  ;;                    Overhead used : 9.529347 ns
+#+end_src
