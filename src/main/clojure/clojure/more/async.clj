@@ -227,3 +227,23 @@
    (let [cfs-es-ehs
          (mapcat (fn [[x y]] [cf x y]) (partition 2 es-ehs))]
      `(interrupt-controls ~f ~ctl ~@cfs-es-ehs))))
+
+(defn reductions*
+  "Like core/reductions, but takes elements from in channel and
+  produces them to out channel."
+  ([rf init in out]
+   (reductions* rf init in out true))
+  ([rf init in out close?]
+   (a/go-loop
+    [state init]
+     (a/alt!
+       in
+       ([v]
+        (if v
+          (recur
+           (rf state v))
+          (when close?
+            (a/close! out))))
+       [[out state]]
+       (recur state)))))
+
