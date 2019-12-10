@@ -50,11 +50,11 @@
   Useful for non thread safe objects which throw upon being accessed from
   different threads."
   [ch f close? pre post]
-   (a/thread
-     (let [pv (pre)
-           g (fn [] (f pv))]
-       (produce-blocking* ch g close?)
-       (post pv))))
+  (a/thread
+    (let [pv (pre)
+          g (fn [] (f pv))]
+      (produce-blocking* ch g close?)
+      (post pv))))
 
 (defn consume
   "Takes values repeatedly from channels and applies f to them.
@@ -89,10 +89,10 @@
   Stops consuming values when the channel is closed.
   Like `consume` but blocking."
   [ch f]
-   (loop []
-     (when-let [v (a/<!! ch)]
-       (f v)
-       (recur))))
+  (loop []
+    (when-let [v (a/<!! ch)]
+      (f v)
+      (recur))))
 
 (defn consume-blocking?*
   " Takes values repeatedly from channels and applies f to them.
@@ -103,10 +103,10 @@
   Stops consuming values when the channel is closed.
   Like `consume?` but blocking."
   [ch f]
-   (loop []
-     (when-let [v (a/<!! ch)]
-       (when (f v)
-         (recur)))))
+  (loop []
+    (when-let [v (a/<!! ch)]
+      (when (f v)
+        (recur)))))
 
 (defn consume-blocking
   "Runs `consume-blocking*` in s thread."
