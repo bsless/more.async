@@ -1,4 +1,4 @@
-(defproject bsless/more.async "0.0.2-alpha"
+(defproject bsless/more.async "0.0.3-alpha"
   :description "More core.async abstractions"
   :url "https://github.com/bsless/more.async"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
