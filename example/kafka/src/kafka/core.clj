@@ -2,7 +2,8 @@
   (:require
    [clojure.core.async :as a]
    [clojure.walk]
-   [clojure.more.async :as ma])
+   [clojure.more.async :as ma]
+   [flatland.useful.utils :refer [thread-local]])
   (:import [org.apache.kafka.clients.consumer ConsumerRebalanceListener KafkaConsumer OffsetCommitCallback]
            [org.apache.kafka.common.serialization ByteArrayDeserializer Deserializer StringDeserializer]
            [org.apache.kafka.common.errors WakeupException]))
@@ -106,6 +107,20 @@
 
     (subscribe! c ["inbound"])
     c))
+
+(defn make-event-fn
+  []
+  (let [kc (thread-local (create-consumer))]
+    (fn [e]
+      (if e
+        (.poll! ^KafkaConsumer @kc 5000)
+        (do (.close @kc) nil)))))
+
+(comment
+  (def to (a/chan))
+  (def from (a/chan))
+  (ma/produce from (constantly true))
+  (a/pipeline-blocking 1 to (map (make-event-fn)) from))
 
 (defn make-consumer-control-fn
   [consumer]
