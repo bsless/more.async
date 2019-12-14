@@ -1,5 +1,14 @@
 # Change Log
 
+## [0.0.3-alpha] - 2019-12-14
+### Added
+- reductions: publishes reductions of inputs to output channel.
+- mux macro: multiplex input channel into maps.
+- documentation improvements
+
+### WIP
+- Kafka example
+
 ## [Unreleased] - 2019-11-08
 ### Added
 - Control function wrappers
