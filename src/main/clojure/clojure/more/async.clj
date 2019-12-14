@@ -247,3 +247,26 @@
        [[out state]]
        (recur state)))))
 
+(defn do-mux
+  [chans-map out]
+  (let [chans (vals chans-map)
+        ks (keys chans-map)
+        syms (map (comp gensym name) ks)
+        bindings (vec (mapcat (fn [s ch] [s `(a/<! ~ch)]) syms chans))
+        check `(and ~@syms)
+        out-form
+        (into
+         {}
+         (map vector ks syms))
+        loop-form
+        `(a/go-loop []
+           (let ~bindings
+             (when ~check
+               (a/>! ~out ~out-form)
+               (recur))))]
+    loop-form))
+
+(defmacro mux
+  [to & from]
+  (assert (even? (count from)))
+  (do-mux (apply hash-map from) to))
