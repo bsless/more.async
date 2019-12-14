@@ -210,6 +210,27 @@
      One exception to that is the Kafka Consumer, but unfortunately it's 
      a stateful Java object and not modeled in pure data, so we're forced
      to work with what we've got.
+     
+**** Afterthought: Without ~with-open~
+     
+     While ~with-open~ is idiomatic, it may not be the way in which we wish
+     to close our consumer. We can use another level of indirection and
+     late-bind the consumer:
+
+     #+begin_src clojure
+       (defn make-event-fn
+         [consumer-fn exception-handler]
+         (let [consumer (consumer-fn)]
+           (poller consumer exception-handler)))
+
+       (defn init-consume
+         [consumer-fn event-fn-maker running? eh ceh]
+         (future
+           (try
+             (produce (event-fn-maker consumer-fn eh) out running?)
+             (catch Exception e
+               (ceh e)))))
+     #+end_src
 
 *** The secret lives of Databases
     
@@ -299,7 +320,7 @@
                 (close channel))))))
     #+end_src
     
-    We prepare a record containing the incoming request, and a port to read
+    We prepare a record containing the incoming request, and a promise to read
     the response from, which will be sent to the client.
     
     Only at the very end of the pipeline, would we need to do something akin to:
@@ -351,3 +372,56 @@
 
     There is also another implementation based on interrupts and exception 
     handling, if polling and control channel each iteration is too costly.
+
+*** The state of things
+
+    How then, do we share states between processes? Especially the kind of 
+    state which is updated by one and read by many, like some internal
+    configuration state?
+
+    We can proceed from the realization an application's state can be modeled
+    as the snapshot of a recursive process operating on an infinite sequence.
+
+    Looking at a loop implementing a primitive version of reduce:
+
+    #+begin_src clojure
+      (loop [state init]
+        (recur (rf state element)))
+    #+end_src
+
+    But where do the elements come from? Since they come from the outside world,
+    we can naively consume them from a channel:
+    
+    #+begin_src clojure
+      (go-loop [state init]
+        (recur (rf state (<! in))))
+    #+end_src
+    
+    Since we also need to "update" the outside world of our new state:
+
+    #+begin_src clojure
+      (go-loop [state init]
+        (let [s (rf state (<! in))]
+          (>! out s)
+          (recur s)))
+    #+end_src
+    
+    But how will a consumer be informed of the current state on demand?
+    The solution is to use alt:
+
+    #+begin_src clojure
+      (defn reductions*
+        [rf init in out close?]
+        (a/go-loop
+            [state init]
+          (a/alt!
+            in
+            ([v]
+             (if v
+               (recur
+                (rf state v))
+               (when close?
+                 (a/close! out))))
+            [[out state]]
+            (recur state))))
+    #+end_src
