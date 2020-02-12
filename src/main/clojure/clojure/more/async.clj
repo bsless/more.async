@@ -270,3 +270,33 @@
   [to & from]
   (assert (even? (count from)))
   (do-mux (apply hash-map from) to))
+
+(defn batch*
+  "Takes messages from in and batch them until reaching size or
+  timeout ms, and puts them to out.
+  Batches with reducing function rf into initial value init.
+  If init is not supplied rf is called with zero args."
+  ([in out size timeout rf close?]
+   (batch* in out size timeout rf (rf) close?))
+  ([in out size timeout rf init close?]
+   (a/go-loop [n 0
+               t (a/timeout timeout)
+               xs init]
+     (let [[v ch] (a/alts! [in t])]
+       (if (= ch in)
+         (if v
+           (if (= n size)
+             (when (a/>! out xs)
+               (recur 0 (a/timeout timeout) []))
+             (recur (inc n) t (rf xs v)))
+           (when close? (a/close! out)))
+         (when (a/>! out xs)
+           (recur 0 (a/timeout timeout) [])))))))
+
+(defn batch
+  "Takes messages from in and batch them until reaching size or
+  timeout ms, and puts them to out."
+  ([in out size timeout]
+   (batch in out size timeout true))
+  ([in out size timeout close?]
+   (batch* in out size timeout conj close?)))
