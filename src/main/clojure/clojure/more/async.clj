@@ -341,3 +341,22 @@
   ([n to af from] (ooo-pipeline-async n to af from true))
   ([n to af from close?] (impl.pipe/ooo-pipeline* n to af from close? nil :async)))
 
+(defn parking-lot
+  [f n in out]
+  (let [jobs (a/chan n)]
+    (a/go-loop []
+      (let [v (a/<! in)]
+        (if (nil? v)
+          (a/close! jobs)
+          (let [timeout (f v)]
+            (a/>! jobs (a/go
+                         (a/<! (a/timeout timeout))
+                         (a/>! out v)))
+            (recur)))))
+    (a/go
+      (let [jobs (a/<! (a/reduce conj [] jobs))
+            countdown (a/merge jobs)]
+        (loop []
+          (when (a/<! countdown)
+            (recur)))
+        (a/close! out)))))
