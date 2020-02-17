@@ -1,6 +1,7 @@
 (ns clojure.more.async
   (:require
-   [clojure.core.async :as a]))
+   [clojure.core.async :as a]
+   [clojure.more.impl.pipe :as impl.pipe]))
 
 (defn produce
   "Puts the contents repeatedly calling f into the supplied channel.
@@ -300,3 +301,43 @@
    (batch in out size timeout true))
   ([in out size timeout close?]
    (batch* in out size timeout conj close?)))
+
+(defn ooo-pipeline
+  "Takes elements from the from channel and supplies them to the to
+  channel, subject to the transducer xf, with parallelism n. Because it
+  is parallel, the transducer will be applied independently to each
+  element, not across elements, and may produce zero or more outputs per
+  input. Outputs will be returned OUT OF ORDER. By default, the to
+  channel will be closed when the from channel closes, but can be
+  determined by the close? parameter. Will stop consuming the from
+  channel if the to channel closes. Note this should be used for
+  computational parallelism. If you have multiple blocking operations to
+  put in flight, use ooo-pipeline-blocking instead, If you have multiple
+  asynchronous operations to put in flight, use ooo-pipeline-async
+  instead."
+  ([n to xf from] (ooo-pipeline n to xf from true))
+  ([n to xf from close?] (ooo-pipeline n to xf from close? nil))
+  ([n to xf from close? ex-handler] (impl.pipe/ooo-pipeline* n to xf from close? ex-handler :compute)))
+
+(defn ooo-pipeline-blocking
+  "Like ooo-pipeline, for blocking operations."
+  ([n to xf from] (ooo-pipeline-blocking n to xf from true))
+  ([n to xf from close?] (ooo-pipeline-blocking n to xf from close? nil))
+  ([n to xf from close? ex-handler] (impl.pipe/ooo-pipeline* n to xf from close? ex-handler :blocking)))
+
+(defn ooo-pipeline-async
+  "Takes elements from the from channel and supplies them to the to
+  channel, subject to the async function af, with parallelism n. af must
+  be a function of two arguments, the first an input value and the
+  second a channel on which to place the result(s). af must close! the
+  channel before returning. The presumption is that af will return
+  immediately, having launched some asynchronous operation (i.e. in
+  another thread) whose completion/callback will manipulate the result
+  channel. Outputs will be returned OUT OF ORDER. By default, the to
+  channel will be closed when the from channel closes, but can be
+  determined by the close? parameter. Will stop consuming the from
+  channel if the to channel closes. See also ooo-pipeline,
+  ooo-pipeline-blocking."
+  ([n to af from] (ooo-pipeline-async n to af from true))
+  ([n to af from close?] (impl.pipe/ooo-pipeline* n to af from close? nil :async)))
+
