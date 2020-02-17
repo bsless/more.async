@@ -235,7 +235,7 @@
    (reductions* rf init in out true))
   ([rf init in out close?]
    (a/go-loop
-    [state init]
+       [state init]
      (a/alt!
        in
        ([v]
