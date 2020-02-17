@@ -9,4 +9,14 @@
   :source-paths ["src/main/clojure"]
   :test-paths ["src/test/clojure"]
 
+  :profiles
+  {:dev {:dependencies
+         [[criterium "0.4.5"]
+          [metrics-clojure "2.10.0"]
+          [com.clojure-goes-fast/jvm-alloc-rate-meter "0.1.3"]
+          [com.clojure-goes-fast/clj-async-profiler "0.4.0"]]
+         :jvm-opts ["-XX:+UnlockDiagnosticVMOptions"
+                    "-XX:+DebugNonSafepoints"]
+         :plugins [[lein-ancient "0.6.15"]]}}
+
   :repl-options {:init-ns clojure.more.async})
