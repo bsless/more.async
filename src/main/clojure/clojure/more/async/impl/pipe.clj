@@ -28,24 +28,6 @@
                      (xf v res)
                      (a/put! p res)
                      true)))]
-     (a/go
-       ;; ensure results is closed after all jobs have been processed
-       (let [countdown
-             (a/merge
-              (map #(case %
-                      (:compute :blocking) (a/thread
-                                             (let [job (a/<!! jobs)]
-                                               (when (process job)
-                                                 (recur))))
-                      :async (a/go-loop []
-                               (let [job (a/<! jobs)]
-                                 (when (async job)
-                                   (recur)))))
-                   (repeat n type)))]
-         (loop []
-           (when (a/<! countdown)
-             (recur))))
-       (a/close! results))
      (a/go-loop []
        (let [v (a/<! from)]
          (if (nil? v)
@@ -62,4 +44,20 @@
                  (let [v (a/<! res)]
                    (when (and (not (nil? v)) (a/>! to v))
                      (recur))))
-               (recur))))))))
+               (recur)))))
+     (a/go
+       ;; ensure results is closed after all jobs have been processed
+       (a/<!
+        (a/merge
+         (map #(case %
+                 (:compute :blocking)
+                 (a/thread
+                   (let [job (a/<!! jobs)]
+                     (when (process job)
+                       (recur))))
+                 :async (a/go-loop []
+                          (let [job (a/<! jobs)]
+                            (when (async job)
+                              (recur)))))
+              (repeat n type))))
+       (a/close! results)))))
