@@ -3,14 +3,14 @@
    [clojure.core.async :as a]
    [clojure.more.impl.pipe :as impl.pipe]))
 
-(defn produce
+(defn produce*
   "Puts the contents repeatedly calling f into the supplied channel.
 
   By default the channel will be closed if f returns nil.
 
   Based on clojure.core.async/onto-chan.
   Equivalent to (onto-chan ch (repeatedly f)) but cuts out the seq."
-  ([ch f] (produce ch f true))
+  ([ch f] (produce* ch f true))
   ([ch f close?]
    (a/go-loop []
      (let [v (f)]
@@ -19,8 +19,20 @@
          (when close?
            (a/close! ch)))))))
 
+(defmacro produce
+  "Execute body repeatedly in a go-loop and put its results into output ch."
+  [ch & body]
+  `(produce* ~ch (fn* [] ~@body)))
+
 (defn produce-blocking*
-  "Like `produce` but blocking."
+  "Puts the contents repeatedly calling f into the supplied channel.
+
+  By default the channel will be closed if f returns nil.
+
+  Like `produce*` but blocking.
+  Should be called inside a thread or a future."
+  ([ch f]
+   (produce-blocking* ch f true))
   ([ch f close?]
    (loop []
      (let [v (f)]
@@ -36,28 +48,14 @@
     (produce-blocking* ch g close?)
     (post pv)))
 
-(defn produce-blocking
-  "Like `produce-blocking*` but takes a thread."
-  ([ch f] (produce ch f true))
-  ([ch f close?]
-   (a/thread (produce-blocking* ch f close?))))
+(defmacro produce-blocking
+  "Execute body repeatedly in a loop and put its results into output ch.
+  Like `produce*` but blocking.
+  Should be called inside a thread or a future."
+  [ch & body]
+  `(produce-blocking* ~ch (fn* [] ~@body)))
 
-(defn produce-bound-blocking
-  "Like `produce-blocking`, but calls `pre` and `post` in the context
-  of the thread.
-  The value returned by `pre` is passed to `f` and `post`.
-  `pre` is called before the loop, `post` after it exhausts.
-
-  Useful for non thread safe objects which throw upon being accessed from
-  different threads."
-  [ch f close? pre post]
-  (a/thread
-    (let [pv (pre)
-          g (fn [] (f pv))]
-      (produce-blocking* ch g close?)
-      (post pv))))
-
-(defn consume
+(defn consume*
   "Takes values repeatedly from channels and applies f to them.
 
   The opposite of produce.
@@ -69,7 +67,16 @@
       (f v)
       (recur))))
 
-(defn consume?
+(defmacro consume
+  "Takes values repeatedly from ch as v and runs body.
+
+  The opposite of produce.
+
+  Stops consuming values when the channel is closed."
+  [ch v & body]
+  `(consume* ~ch (fn* [~v] ~@body)))
+
+(defn consume?*
   "Takes values repeatedly from channels and applies f to them.
   Recurs only when f returns a non false-y value.
 
@@ -82,18 +89,38 @@
       (when (f v)
         (recur)))))
 
+(defmacro consume?
+  "Takes values repeatedly from ch as v and runs body.
+
+  The opposite of produce.
+
+  Stops consuming values when the channel is closed or body evaluates to a
+  false-y value."
+  [ch v & body]
+  `(consume?* ~ch (fn* [~v] ~@body)))
+
 (defn consume-blocking*
   "Takes values repeatedly from channels and applies f to them.
 
   The opposite of produce.
 
   Stops consuming values when the channel is closed.
-  Like `consume` but blocking."
+  Like `consume*` but blocking."
   [ch f]
   (loop []
     (when-let [v (a/<!! ch)]
       (f v)
       (recur))))
+
+(defmacro consume-blocking
+  "Takes values repeatedly from ch as v and runs body.
+
+  The opposite of produce.
+
+  Stops consuming values when the channel is closed.
+  Like `consume` but blocking."
+  [ch v & body]
+  `(consume-blocking* ~ch (fn* [~v] ~@body)))
 
 (defn consume-blocking?*
   " Takes values repeatedly from channels and applies f to them.
@@ -109,15 +136,9 @@
       (when (f v)
         (recur)))))
 
-(defn consume-blocking
-  "Runs `consume-blocking*` in s thread."
-  [ch f]
-  (a/thread (consume-blocking* ch f)))
-
-(defn consume-blocking?
-  "Runs `consume-blocking?*` in s thread."
-  [ch f]
-  (a/thread (consume-blocking?* ch f)))
+(defmacro consume-blocking?
+  [ch v & body]
+  `(consume-blocking?* ~ch (fn* [~v] ~@body)))
 
 (defn split*
   "Takes a channel, function f :: v -> k and a map of keys to channels k -> ch,
@@ -188,7 +209,7 @@
           (let [o (get-chan! v)]
             (when (a/>! o v) (recur))))))))
 
-(defn control
+(defn control*
   "Wraps f with control function cf such that f will be invoked when:
   cf returns a truthy value for a value taken from ctl channel or
   there is no signal on ctl channel to take immidiately"
@@ -197,6 +218,10 @@
     (if-let [sig (a/poll! ctl)]
       (when (cf sig) (f))
       (f))))
+
+(defmacro control
+  [ctl cf & body]
+  `(control* (fn* [] ~@body) ~cf ~ctl))
 
 (defmacro interrupt-controls
   [f ctl & cfs-es-ehs]
