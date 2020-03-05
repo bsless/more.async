@@ -41,13 +41,6 @@
          (when close?
            (a/close! ch)))))))
 
-(defn produce-bound-blocking*
-  [ch f close? pre post]
-  (let [pv (pre)
-        g (fn [] (f pv))]
-    (produce-blocking* ch g close?)
-    (post pv)))
-
 (defmacro produce-blocking
   "Execute body repeatedly in a loop and put its results into output ch.
   Like `produce*` but blocking.
