@@ -1,7 +1,7 @@
 (ns clojure.more.async
   (:require
    [clojure.core.async :as a]
-   [clojure.more.impl.pipe :as impl.pipe]))
+   [clojure.more.async.impl.pipe :as impl.pipe]))
 
 (defn produce*
   "Puts the contents repeatedly calling f into the supplied channel.
