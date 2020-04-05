@@ -6,6 +6,18 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/core.async "1.0.567"]]
 
+  :deploy-repositories [["releases" :clojars]
+                        ["snapshots" :clojars]]
+
+  :release-tasks
+  [["vcs" "assert-committed"]
+   ["change" "version" "leiningen.release/bump-version" "release"]
+   ["vcs" "commit"]
+   ["deploy" "clojars"]
+   ["change" "version" "leiningen.release/bump-version"]
+   ["vcs" "commit"]
+   ["vcs" "push"]]
+
   :source-paths ["src/main/clojure"]
   :test-paths ["src/test/clojure"]
 
