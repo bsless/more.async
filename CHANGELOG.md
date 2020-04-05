@@ -1,6 +1,19 @@
 # Change Log
 
-## [0.0.3-alpha] - 2019-12-14
+## [0.0.4] - 2020-04-05
+
+### Changed
+
+- produce/consume api rewrite.
+
+### Added
+- Out of order pipeline implementation.
+- future-like api around produce/consume functions.
+
+### Removed
+- produce-bound-blocking
+
+## [0.0.3] - 2019-12-14
 ### Added
 - reductions: publishes reductions of inputs to output channel.
 - mux macro: multiplex input channel into maps.
