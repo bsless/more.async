@@ -382,3 +382,66 @@
   ([n to af from] (ooo-pipeline-async n to af from true))
   ([n to af from close?] (impl.pipe/ooo-pipeline* n to af from close? nil :async)))
 
+(defn- noop [])
+
+(defn wait*
+  ([tasks mode]
+   (let [o (a/merge tasks)]
+     (case mode
+       :blocking (consume-blocking o _ (noop))
+       :non-blocking (consume o _ (noop))))))
+
+(defn wait
+  [tasks]
+  (wait* tasks :non-blocking))
+
+(defn wait-blocking
+  [tasks]
+  (wait* tasks :blocking))
+
+(defn- wrap-cleanup
+  [n cleanup]
+  (let [a (atom n)
+        p (a/chan)]
+    [p (fn []
+         (when (zero? (swap! a dec))
+           (cleanup)
+           (a/close! p)))]))
+
+(defn wait-group*
+  ([n f]
+   (wait-group* n f noop))
+  ([n f cleanup]
+   (let [[p cleanup] (wrap-cleanup n cleanup)]
+     (mapv
+      (fn [_]
+        (a/thread (f) (cleanup)))
+      (range n))
+     p)))
+
+(comment
+  (a/<!!
+   (wait-group*
+    8
+    (fn []
+      (let [n (+ 1000 (rand-int 1000))]
+        (Thread/sleep n)
+        (println n)))
+    (fn []
+      (println "goodbye!")))))
+
+(defmacro wait-group
+  [n & body]
+  (let [p (partial identical? :finally)]
+    (assert (<= (count (filter p body)) 1))
+    (let [[body _ finally] (partition-by p body)]
+      `(wait-group* ~n (fn* [] ~@body) (fn* [] ~@finally)))))
+
+(comment
+  (wait-group
+   8
+   (let [n (+ 1000 (rand-int 1000))]
+     (Thread/sleep n)
+     (println n))
+   :finally
+   (println "goodbye!")))

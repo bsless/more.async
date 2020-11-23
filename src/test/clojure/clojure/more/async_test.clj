@@ -75,3 +75,13 @@
     (t/is (= {:a 2 :b 1} (a/<!! out)))
     (a/close! in)
     (t/is (nil? (a/<!! out)))))
+
+(t/deftest wait-group
+  (t/testing ""
+    (let [a (atom 0)
+          a' (atom 0)
+          f #(swap! a inc)
+          cleanup #(swap! a' inc)]
+      (sut/wait-group 3 (f) (f) :finally (cleanup))
+      (t/is (= 6 @a))
+      (t/is (= 1 @a')))))
