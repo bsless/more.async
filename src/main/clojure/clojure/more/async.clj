@@ -3,6 +3,18 @@
    [clojure.core.async :as a]
    [clojure.more.async.impl.pipe :as impl.pipe]))
 
+(defn put-recur!*
+  [ch f]
+  (when-let [v (f)]
+    (a/put! ch v (fn loop-fn [success?]
+                   (when success?
+                     (when-let [v (f)]
+                       (a/put! ch v loop-fn)))))))
+
+(defmacro put-recur!
+  [ch & body]
+  `(put-recur!* ~ch (fn* [] ~@body)))
+
 (defn produce*
   "Puts the contents repeatedly calling f into the supplied channel.
 
@@ -47,6 +59,17 @@
   Should be called inside a thread or a future."
   [ch & body]
   `(produce-blocking* ~ch (fn* [] ~@body)))
+
+(defn take-recur!*
+  [ch f]
+  (a/take! ch (fn loop-fn [v]
+                (when (some? v)
+                  (f v)
+                  (a/take! ch loop-fn)))))
+
+(defmacro take-recur!
+  [ch v & body]
+  `(take-recur!* ~ch (fn* [~v] ~@body)))
 
 (defn consume*
   "Takes values repeatedly from channels and applies f to them.
