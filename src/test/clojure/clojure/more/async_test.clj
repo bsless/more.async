@@ -13,7 +13,7 @@
 (t/deftest produce
   (let [ch (a/chan)
         f (ticker)]
-    (sut/produce ch f)
+    (sut/produce ch (f))
     (t/is (= 1 (a/<!! ch)))
     (t/is (= 2 (a/<!! ch)))
     (a/close! ch)))
@@ -21,7 +21,8 @@
 (t/deftest produce-blocking
   (let [ch (a/chan)
         f (ticker)]
-    (sut/produce-blocking ch f)
+    (a/thread
+      (sut/produce-blocking ch (f)))
     (t/is (= 1 (a/<!! ch)))
     (t/is (= 2 (a/<!! ch)))
     (a/close! ch)))
@@ -32,7 +33,7 @@
     (a/>!! ch 1)
     (a/>!! ch 2)
     (a/close! ch)
-    (sut/consume ch #(a/>!! o %))
+    (sut/consume ch v (a/>!! o v))
     (t/is (= 1 (a/<!! o)))
     (t/is (= 2 (a/<!! o)))))
 
@@ -42,7 +43,8 @@
     (a/>!! ch 1)
     (a/>!! ch 2)
     (a/close! ch)
-    (sut/consume-blocking ch #(a/>!! o %))
+    (a/thread
+      (sut/consume-blocking ch v (a/>!! o v)))
     (t/is (= 1 (a/<!! o)))
     (t/is (= 2 (a/<!! o)))))
 
@@ -52,7 +54,7 @@
     (a/>!! ch 1)
     (a/>!! ch 2)
     (a/close! ch)
-    (sut/consume? ch (fn [x] (a/>!! o x) nil))
+    (sut/consume? ch x (do (a/>!! o x) nil))
     (t/is (= 1 (a/<!! o)))
     (t/is (= :blocked
              (deref (future (a/<!! o)) 20 :blocked)))))
