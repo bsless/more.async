@@ -572,3 +572,65 @@
      (println n))
    :finally
    (println "goodbye!")))
+
+(defprotocol IRequest
+  (-serve [this]))
+
+(deftype Request [ch f]
+  IRequest
+  (-serve [this]
+    (let [res (try (f) (catch Throwable t t))]
+      (if (nil? res)
+        nil
+        (a/>!! ch res))
+      (a/close! ch))))
+
+(defn async-cb
+  [ch]
+  (fn [resp]
+    (a/put! ch resp)
+    (a/close! ch)))
+
+(defn wrap-async
+  [f ch]
+  (let [cb (async-cb ch)]
+    (fn []
+      (f cb))))
+
+(deftype AsyncRequest [ch f]
+  IRequest
+  (-serve [this]
+    (let [f (wrap-async f ch)]
+      (f))))
+
+(defn request*
+  [ch f]
+  (let [p (a/promise-chan)
+        req (->Request p f)]
+    (try
+      (a/>!! ch req)
+      (catch Throwable t
+        (a/>!! ch t)))
+    p))
+
+(defprotocol IServer
+  (-request [this f]))
+
+(deftype Server [ch done]
+  IServer
+  (-request [this f] (request* ch f))
+  java.lang.AutoCloseable
+  (close [this]
+    (a/close! ch) done))
+
+(defn server
+  [n]
+  (let [ch (a/chan)
+        wg (wait-group n (consume-blocking* ch -serve))]
+    (->Server ch wg)))
+
+(comment
+  (def s (server 1))
+  (.close s)
+  (def p (-request s #(do (println "Hello from the other side"))))
+  (a/<!! p))
