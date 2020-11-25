@@ -1,6 +1,15 @@
 # more.async
 
-A Clojure library designed to provide more abstractions and means to communicate with Clojure's core.async channels and avoid constantly rewriting boilerplate channels handling functions, such as producing and consuming at the beginnings and ends of pipelines.
+More core.async idioms and abstractions.
+
+It is important to have the proper set of abstractions and idioms for problem solving and building systems. It allows the programmer to focus more on the system and its language and less on boilerplate, ceremony and logistics.
+
+This library tries to enrich the language of core.async by providing the useful idioms which often repeat across code bases in some variation, among which are:
+
+- producing/consuming to channels at the edges of a system
+- dispatching/routing channels
+- batching
+- waiting for a group of tasks
 
 ## Usage
 
