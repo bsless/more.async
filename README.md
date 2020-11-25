@@ -17,7 +17,7 @@ This library tries to enrich the language of core.async by providing the useful 
 
 Add the following dependency in your leiningen project:
 ```clojure
-[bsless/more.async "0.0.2-alpha"]
+[bsless/more.async "0.0.4"]
 ```
 
 ### Require
