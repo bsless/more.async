@@ -1,3 +1,5 @@
+[![Clojars Project](https://img.shields.io/clojars/v/bsless/more.async.svg)](https://clojars.org/bsless/more.async)
+
 # more.async
 
 More core.async idioms and abstractions.
