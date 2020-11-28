@@ -59,7 +59,6 @@
     (t/is (= :blocked
              (deref (future (a/<!! o)) 20 :blocked)))))
 
-
 (t/deftest reductions*
   (let [in (a/chan)
         out (a/chan)
@@ -75,6 +74,46 @@
     (t/is (= {:a 2 :b 1} (a/<!! out)))
     (a/close! in)
     (t/is (nil? (a/<!! out)))))
+
+(t/deftest batch
+  (t/testing "batch blocking"
+    (let [out (a/chan)
+          in (a/to-chan (range 9))]
+      (a/thread
+        (sut/batch!! in out 3 100000 conj #{} true))
+      (t/is (= #{0 1 2} (a/<!! out)))
+      (t/is (= #{3 4 5} (a/<!! out)))
+      (t/is (= #{6 7 8} (a/<!! out)))
+      (t/is (nil? (a/<!! out)))))
+  (t/testing "batch async"
+    (let [out (a/chan)
+          in (a/to-chan (range 9))]
+      (sut/batch! in out 3 100000 conj #{} true)
+      (t/is (= #{0 1 2} (a/<!! out)))
+      (t/is (= #{3 4 5} (a/<!! out)))
+      (t/is (= #{6 7 8} (a/<!! out)))
+      (t/is (nil? (a/<!! out)))))
+  (t/testing "batch timeout"
+    (let [out (a/chan)
+          f (ticker)
+          in (sut/periodically! f 100)]
+      (a/thread
+        (sut/batch!! in out 3 220 conj #{} true))
+      (t/is (= #{1 2} (a/<!! out)))
+      (t/is (= #{3 4} (a/<!! out)))
+      (t/is (= #{5 6} (a/<!! out)))
+      (a/close! in)
+      (t/is (nil? (a/<!! out)))))
+  (t/testing "batch async timeout"
+    (let [out (a/chan)
+          f (ticker)
+          in (sut/periodically! f 100)]
+      (sut/batch! in out 3 220 conj #{} true)
+      (t/is (= #{1 2} (a/<!! out)))
+      (t/is (= #{3 4} (a/<!! out)))
+      (t/is (= #{5 6} (a/<!! out)))
+      (a/close! in)
+      (t/is (nil? (a/<!! out))))))
 
 (t/deftest wait-group
   (t/testing ""

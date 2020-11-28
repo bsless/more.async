@@ -313,27 +313,95 @@
   (assert (even? (count from)))
   (do-mux (apply hash-map from) to))
 
-(defn batch*
+(defn- ex-handler [ex]
+  (-> (Thread/currentThread)
+      .getUncaughtExceptionHandler
+      (.uncaughtException (Thread/currentThread) ex))
+  nil)
+
+(defn periodically!
+  ([f t]
+   (periodically! f t nil))
+  ([f t buf-or-n]
+   (periodically! f t buf-or-n ex-handler))
+  ([f t buf-or-n exh]
+   (assert (and (number? t) (pos? t)))
+   (let [o (a/chan buf-or-n)
+         f #(try (f) (catch Exception e (exh e)))]
+     (a/go-loop [t' (a/timeout t)]
+       (let [[_ ch] (a/alts! [t' o])]
+         (if (identical? ch t')
+           (when-some [v (f)]
+             (when (a/>! o v)
+               (recur (a/timeout t))))
+           (recur t'))))
+     o)))
+
+(comment
+ (def out (periodically! (constantly 1) 1000))
+ (consume out v (println v))
+ (a/close! out))
+
+(defn batch!!
   "Takes messages from in and batch them until reaching size or
   timeout ms, and puts them to out.
   Batches with reducing function rf into initial value init.
   If init is not supplied rf is called with zero args."
   ([in out size timeout rf close?]
-   (batch* in out size timeout rf (rf) close?))
+   (batch!! in out size timeout rf (rf) close?))
   ([in out size timeout rf init close?]
-   (a/go-loop [n 0
+   (assert (pos? size))
+   (loop [n 1
+          t (a/timeout timeout)
+          xs init]
+     (let [[v ch] (a/alts!! [in t])]
+       (if (identical? ch in)
+         (if (nil? v)
+           (when close? (a/close! out))
+           (let [xs (rf xs v)]
+             (if (== n size)
+               (when (a/>!! out xs)
+                 (recur 1 (a/timeout timeout) init))
+               (recur (unchecked-inc n) t xs))))
+         (when (a/>!! out xs)
+           (recur 1 (a/timeout timeout) init)))))))
+
+(comment
+  (def out (a/chan))
+  (consume out v (println v))
+  (def in (a/to-chan (range 4)))
+  (batch!! in out 2 100000 conj #{} true))
+
+(comment
+  (def out (a/chan))
+  (consume out v (println v))
+  (def in (periodically! (constantly 1) 1000 1))
+  (a/thread
+    (batch!! in out 3 2000 conj [] true))
+  (a/close! in))
+
+(defn batch!
+  "Takes messages from in and batch them until reaching size or
+  timeout ms, and puts them to out.
+  Batches with reducing function rf into initial value init.
+  If init is not supplied rf is called with zero args."
+  ([in out size timeout rf close?]
+   (batch!! in out size timeout rf (rf) close?))
+  ([in out size timeout rf init close?]
+   (a/go-loop [n 1
                t (a/timeout timeout)
                xs init]
      (let [[v ch] (a/alts! [in t])]
-       (if (= ch in)
-         (if v
-           (if (= n size)
-             (when (a/>! out xs)
-               (recur 0 (a/timeout timeout) []))
-             (recur (inc n) t (rf xs v)))
-           (when close? (a/close! out)))
+       (if (identical? ch in)
+         (if (nil? v)
+           (when close? (a/close! out))
+           (let [xs (rf xs v)]
+             (if (== n size)
+               (when (a/>! out xs)
+                 (recur 1 (a/timeout timeout) init))
+               (recur (unchecked-inc n) t xs))))
          (when (a/>! out xs)
-           (recur 0 (a/timeout timeout) [])))))))
+           (recur 1 (a/timeout timeout) init)))))))
 
 (defn batch
   "Takes messages from in and batch them until reaching size or
@@ -341,7 +409,7 @@
   ([in out size timeout]
    (batch in out size timeout true))
   ([in out size timeout close?]
-   (batch* in out size timeout conj close?)))
+   (batch! in out size timeout conj close?)))
 
 (defn ooo-pipeline
   "Takes elements from the from channel and supplies them to the to
