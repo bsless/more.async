@@ -4,6 +4,9 @@
    [clojure.more.async.impl.pipe :as impl.pipe]))
 
 (defn put-recur!*
+  "Repeatedly [[a/put!]] into `ch` the results of invoking `f`.
+  All limitations which apply to [[a/put!]] apply here as well.
+  Uses the core.async fixed size dispatch thread pool."
   [ch f]
   (when-some [v (f)]
     (a/put! ch v (fn loop-fn [success?]
@@ -12,11 +15,14 @@
                        (a/put! ch v loop-fn)))))))
 
 (defmacro put-recur!
+  "Repeatedly [[a/put!]] into `ch` the results of running `body`.
+  All limitations which apply to [[a/put!]] apply here as well.
+  Uses the core.async fixed size dispatch thread pool."
   [ch & body]
   `(put-recur!* ~ch (fn* [] ~@body)))
 
 (defn produce*
-  "Puts the contents repeatedly calling f into the supplied channel.
+  "Put the contents repeatedly calling f into the supplied channel.
 
   By default the channel will be closed if f returns nil.
 
@@ -32,12 +38,14 @@
            (a/close! ch)))))))
 
 (defmacro produce
-  "Execute body repeatedly in a go-loop and put its results into output ch."
+  "Execute `body` repeatedly in a go-loop and put its results into
+  output `ch`."
   [ch & body]
   `(produce* ~ch (fn* [] ~@body)))
 
 (defn produce-blocking*
-  "Puts the contents repeatedly calling f into the supplied channel.
+  "Put the contents of repeatedly calling `f` into the supplied channel
+  `ch`.
 
   By default the channel will be closed if f returns nil.
 
@@ -54,13 +62,17 @@
            (a/close! ch)))))))
 
 (defmacro produce-blocking
-  "Execute body repeatedly in a loop and put its results into output ch.
+  "Execute body repeatedly in a loop and put its results into output `ch`.
   Like `produce*` but blocking.
   Should be called inside a thread or a future."
   [ch & body]
   `(produce-blocking* ~ch (fn* [] ~@body)))
 
 (defn take-recur!*
+  "Repeatedly [[a/take!]] from `ch` and apply `f` to the consumed value.
+  All limitations which apply to [[a/take!]] apply here as well.
+  Stops recurring when the channel is closed.
+  Uses the core.async fixed size dispatch thread pool."
   [ch f]
   (a/take! ch (fn loop-fn [v]
                 (when (some? v)
@@ -68,11 +80,16 @@
                   (a/take! ch loop-fn)))))
 
 (defmacro take-recur!
+  "Repeatedly [[a/take!]] from `ch` and apply `body` to the consumed value.
+  `v` introduces a binding for the consumed value inside `body`'s context.
+  All limitations which apply to [[a/take!]] apply here as well.
+  Stops recurring when the channel is closed.
+  Uses the core.async fixed size dispatch thread pool."
   [ch v & body]
   `(take-recur!* ~ch (fn* [~v] ~@body)))
 
 (defn consume*
-  "Takes values repeatedly from channels and applies f to them.
+  "Take values repeatedly from `ch` and apply `f` to them.
 
   The opposite of produce.
 
@@ -84,7 +101,7 @@
       (recur))))
 
 (defmacro consume
-  "Takes values repeatedly from ch as v and runs body.
+  "Takes values repeatedly from `ch` as `v` and run `body`.
 
   The opposite of produce.
 
@@ -93,12 +110,12 @@
   `(consume* ~ch (fn* [~v] ~@body)))
 
 (defn consume?*
-  "Takes values repeatedly from channels and applies f to them.
-  Recurs only when f returns a non false-y value.
+  "Take values repeatedly from `ch` and apply `f` to them.
+  Recur only when `f` returns a non false-y value.
 
   The opposite of produce.
 
-  Stops consuming values when the channel is closed."
+  Stop consuming values when the channel is closed."
   [ch f]
   (a/go-loop []
     (when-some [v (a/<! ch)]
@@ -106,7 +123,7 @@
         (recur)))))
 
 (defmacro consume?
-  "Takes values repeatedly from ch as v and runs body.
+  "Take values repeatedly from `ch` as `v` and run `body`.
 
   The opposite of produce.
 
@@ -116,7 +133,7 @@
   `(consume?* ~ch (fn* [~v] ~@body)))
 
 (defn consume-blocking*
-  "Takes values repeatedly from channels and applies f to them.
+  "Take values repeatedly from `ch` and applies `f` to them.
 
   The opposite of produce.
 
@@ -129,7 +146,7 @@
       (recur))))
 
 (defmacro consume-blocking
-  "Takes values repeatedly from ch as v and runs body.
+  "Take values repeatedly from `ch` as `v` and run `body`.
 
   The opposite of produce.
 
@@ -139,8 +156,8 @@
   `(consume-blocking* ~ch (fn* [~v] ~@body)))
 
 (defn consume-blocking?*
-  " Takes values repeatedly from channels and applies f to them.
-  Recurs only when f returns a non false-y value.
+  "Takes values repeatedly from `ch` and applies `f` to them.
+  Recurs only when `f` returns a non false-y value.
 
   The opposite of produce.
 
@@ -153,6 +170,13 @@
         (recur)))))
 
 (defmacro consume-blocking?
+  "Takes values repeatedly from `ch` as `v` and evaluate `body`.
+  Recurs only when `body` evaluates to a non false-y value.
+
+  The opposite of produce.
+
+  Stops consuming values when the channel is closed.
+  Like `consume?` but blocking."
   [ch v & body]
   `(consume-blocking?* ~ch (fn* [~v] ~@body)))
 
@@ -309,6 +333,8 @@
     loop-form))
 
 (defmacro mux
+  "Put into `to` a map of takes by all pairs in `from` from key to
+  channel."
   [to & from]
   (assert (even? (count from)))
   (do-mux (apply hash-map from) to))
@@ -458,6 +484,8 @@
 (defn- noop [])
 
 (defn wait*
+  "Wait for `tasks`, a collection of channels, to finish.
+  Returns nothing meaningful."
   ([tasks mode]
    (let [o (a/merge tasks)]
      (case mode
@@ -465,10 +493,16 @@
        :non-blocking (consume o _ (noop))))))
 
 (defn wait
+  "Wait for `tasks`, a collection of channels, to finish in a
+  non-blocking context.
+  Returns nothing meaningful."
   [tasks]
   (wait* tasks :non-blocking))
 
 (defn wait-blocking
+  "Wait for `tasks`, a collection of channels, to finish in a
+  blocking context.
+  Returns nothing meaningful."
   [tasks]
   (wait* tasks :blocking))
 
@@ -482,6 +516,9 @@
            (a/close! p)))]))
 
 (defn wait-group*
+  "Run `f` `n` times in [[a/thread]] and wait for all runs to finish.
+  Returns a promise chan which closes when all tasks finish.
+  May run `cleanup` in the end. Cleanup is guaranteed to run once."
   ([n f]
    (wait-group* n f noop))
   ([n f cleanup]
@@ -504,6 +541,23 @@
       (println "goodbye!")))))
 
 (defmacro wait-group
+  "Run `body` `n` times in [[a/thread]] and wait for all runs to finish.
+  Returns a promise chan which closes when all tasks finish. May run
+  `cleanup` in the end. Cleanup is delimited from the rest of the body
+  by the keyword `:finally`.
+  Cleanup is guaranteed to run once.
+
+  Example:
+  ```clojure
+  (wait-group
+   8
+   (let [n (+ 1000 (rand-int 1000))]
+     (Thread/sleep n)
+     (println n))
+   :finally
+   (println \"goodbye!\"))
+  ```
+  "
   [n & body]
   (let [p (partial identical? :finally)]
     (assert (<= (count (filter p body)) 1))
