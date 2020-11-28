@@ -320,6 +320,10 @@
   nil)
 
 (defn periodically!
+  "Invoke `f` periodically with period `t` and put the results into
+  returned channel.
+
+  Optionally takes buffer or buffer size and exception handler for `f`."
   ([f t]
    (periodically! f t nil))
   ([f t buf-or-n]
@@ -346,7 +350,8 @@
   "Takes messages from in and batch them until reaching size or
   timeout ms, and puts them to out.
   Batches with reducing function rf into initial value init.
-  If init is not supplied rf is called with zero args."
+  If init is not supplied rf is called with zero args.
+  Like [[batch!]] but blocking."
   ([in out size timeout rf close?]
    (batch!! in out size timeout rf (rf) close?))
   ([in out size timeout rf init close?]
