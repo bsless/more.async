@@ -49,11 +49,12 @@ For example, with [kinsky's](https://github.com/pyr/kinsky) kafka client:
 
 (def msg-ch (a/chan))
 
-(ma/produce-bound-blocking
- msg-ch
- #(client/poll! % 100)
- make-consumer
- client/close!)
+(a/thread
+  (let [consumer (make-consumer)]
+    (ma/produce-blocking
+     msg-ch
+     (client/poll! consumer 100))
+    (client/close!)))
 ```
 
 #### Channel Consumer
@@ -65,12 +66,16 @@ For example, with [kinsky's](https://github.com/pyr/kinsky) kafka client:
                          (client/keyword-serializer)
                          (client/edn-serializer))
       topic "account"]
-  (ma/consume out-ch #(client/send! p topic %)))
+  (ma/consume out-ch v (client/send! p topic v)))
 ```
+
+## Status
+
+In active development. Might contain bugs. PRs welcome.
 
 ## License
 
-Copyright © 2019 Ben Sless
+Copyright © 2019-2020 Ben Sless
 
 This program and the accompanying materials are made available under the
 terms of the Eclipse Public License 2.0 which is available at
