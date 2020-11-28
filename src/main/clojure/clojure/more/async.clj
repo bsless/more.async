@@ -5,10 +5,10 @@
 
 (defn put-recur!*
   [ch f]
-  (when-let [v (f)]
+  (when-some [v (f)]
     (a/put! ch v (fn loop-fn [success?]
                    (when success?
-                     (when-let [v (f)]
+                     (when-some [v (f)]
                        (a/put! ch v loop-fn)))))))
 
 (defmacro put-recur!
@@ -79,7 +79,7 @@
   Stops consuming values when the channel is closed."
   [ch f]
   (a/go-loop []
-    (when-let [v (a/<! ch)]
+    (when-some [v (a/<! ch)]
       (f v)
       (recur))))
 
@@ -101,7 +101,7 @@
   Stops consuming values when the channel is closed."
   [ch f]
   (a/go-loop []
-    (when-let [v (a/<! ch)]
+    (when-some [v (a/<! ch)]
       (when (f v)
         (recur)))))
 
@@ -124,7 +124,7 @@
   Like `consume*` but blocking."
   [ch f]
   (loop []
-    (when-let [v (a/<!! ch)]
+    (when-some [v (a/<!! ch)]
       (f v)
       (recur))))
 
@@ -148,7 +148,7 @@
   Like `consume?` but blocking."
   [ch f]
   (loop []
-    (when-let [v (a/<!! ch)]
+    (when-some [v (a/<!! ch)]
       (when (f v)
         (recur)))))
 
