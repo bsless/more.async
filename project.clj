@@ -6,7 +6,11 @@
   :dependencies [[org.clojure/clojure "1.10.1"]
                  [org.clojure/core.async "1.0.567"]]
 
-  :deploy-repositories [["releases" :clojars]
+  :deploy-repositories [["clojars" {:url "https://clojars.org/repo"
+                                    :username :gpg
+                                    :password :gpg
+                                    :sign-releases false}]
+                        ["releases" :clojars]
                         ["snapshots" :clojars]]
 
   :release-tasks
