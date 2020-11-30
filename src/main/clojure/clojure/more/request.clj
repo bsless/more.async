@@ -1,4 +1,4 @@
-(ns clojure.more.async
+(ns clojure.more.request
   (:require
    [clojure.core.async :as a]
    [clojure.more.async :as a+]
@@ -65,35 +65,23 @@
   [server f]
   (-request server f))
 
-(defn async-cb
-  [ch]
-  (fn [resp]
-    (println 'CB resp)
-    (a/put! ch resp)
-    (a/close! ch)))
-
-(defn wrap-async
-  [f ch]
-  (let [cb (async-cb ch)]
-    (fn []
-      (f cb))))
-
-(deftype AsyncRequest [ch f]
+(deftype AsyncRequest [f]
   IRequest
-  (-serve [this]
-    (let [f (wrap-async f ch)]
-      (f))))
+  (-serve [this] (f)))
 
 (defn request!*
   [ch f]
   (let [p (a/promise-chan)
-        req (->AsyncRequest p f)]
+        req (->AsyncRequest
+             #(f (fn [resp]
+                   (a/put! p resp)
+                   (a/close! p))))]
     (a/go
       (try
-        (a/>!! ch req)
+        (a/>! ch req)
         (catch Throwable t
-          (a/>!! ch t))))
-    p))
+          (a/>! ch t)))
+      (a/<! p))))
 
 (defn request!
   [async-server af]
@@ -207,11 +195,15 @@
 
   (defn af
     [cb]
-    (a/put! ch cb))
-  (def proc (a+/consume ch v (println v)))
+    (a/put! ch (rand-int 10) cb))
+
+  (def proc (a+/consume ch v (println 'consumed v)))
+
   (def s1 (server! 2 2))
+
   (def p (request! s1 af))
-  (a/poll! p)
+
+  (a/<!! p)
 
   (.close s1)
   (a/close! ch)
