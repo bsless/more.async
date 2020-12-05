@@ -397,16 +397,15 @@
   ([in out size timeout rf init close?]
    (assert (pos? size))
    (loop [n 1
-          t (a/timeout timeout)
           xs init]
-     (let [[v ch] (a/alts!! [in t])]
+     (let [t (a/timeout timeout)
+           [v ch] (a/alts!! [in t])]
        (if (identical? ch in)
          (if (nil? v)
            (when close? (a/close! out))
            (let [xs (rf xs v)]
              (when
                  (loop [n n
-                        t t
                         xs xs]
                    (if (== n size)
                      (a/>!! out xs)
@@ -414,10 +413,10 @@
                        (if (identical? ch in)
                          (if (nil? v)
                            (and (a/>!! out xs) close? (a/close! out))
-                           (recur (unchecked-inc n) t (rf xs v)))
+                           (recur (unchecked-inc n) (rf xs v)))
                          (a/>!! out xs)))))
-               (recur 1 (a/timeout timeout) init))))
-         (recur 1 (a/timeout timeout) init))))))
+               (recur 1 init))))
+         (recur 1 init))))))
 
 (comment
   (def out (a/chan))
@@ -444,16 +443,15 @@
    (assert (pos? size))
    (a/go
      (loop [n 1
-            t (a/timeout timeout)
             xs init]
-       (let [[v ch] (a/alts! [in t])]
+       (let [t (a/timeout timeout)
+             [v ch] (a/alts! [in t])]
          (if (identical? ch in)
            (if (nil? v)
              (when close? (a/close! out))
              (let [xs (rf xs v)]
                (when
                    (loop [n n
-                          t t
                           xs xs]
                      (if (== n size)
                        (a/>! out xs)
@@ -461,10 +459,10 @@
                          (if (identical? ch in)
                            (if (nil? v)
                              (and (a/>! out xs) close? (a/close! out))
-                             (recur (unchecked-inc n) t (rf xs v)))
+                             (recur (unchecked-inc n) (rf xs v)))
                            (a/>! out xs)))))
-                 (recur 1 (a/timeout timeout) init))))
-           (recur 1 (a/timeout timeout) init)))))))
+                 (recur 1 init))))
+           (recur 1 init)))))))
 
 (defn batch
   "Takes messages from in and batch them until reaching size or
