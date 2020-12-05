@@ -104,6 +104,17 @@
       (t/is (= #{5 6} (a/<!! out)))
       (a/close! in)
       (t/is (nil? (a/<!! out)))))
+  (t/testing "empty batch"
+    (let [out (a/chan)
+          in (a/chan)]
+      (a/thread
+        (sut/batch!! in out 3 220 conj #{} true))
+      (t/is (= :timeout
+               (a/alt!!
+                out :batch
+                (a/timeout 400) :timeout)))
+      (a/close! in)
+      (t/is (nil? (a/<!! out)))))
   (t/testing "batch async timeout"
     (let [out (a/chan)
           f (ticker)
@@ -112,6 +123,17 @@
       (t/is (= #{1 2} (a/<!! out)))
       (t/is (= #{3 4} (a/<!! out)))
       (t/is (= #{5 6} (a/<!! out)))
+      (a/close! in)
+      (t/is (nil? (a/<!! out)))))
+  (t/testing "empty async batch"
+    (let [out (a/chan)
+          in (a/chan)]
+      (a/thread
+        (sut/batch!! in out 3 220 conj #{} true))
+      (t/is (= :timeout
+               (a/alt!!
+                 out :batch
+                 (a/timeout 400) :timeout)))
       (a/close! in)
       (t/is (nil? (a/<!! out))))))
 
