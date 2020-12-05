@@ -403,19 +403,18 @@
        (if (identical? ch in)
          (if (nil? v)
            (when close? (a/close! out))
-           (let [xs (rf xs v)]
-             (when
-                 (loop [n n
-                        xs xs]
-                   (if (== n size)
-                     (a/>!! out xs)
-                     (let [[v ch] (a/alts!! [in t])]
-                       (if (identical? ch in)
-                         (if (nil? v)
-                           (and (a/>!! out xs) close? (a/close! out))
-                           (recur (unchecked-inc n) (rf xs v)))
-                         (a/>!! out xs)))))
-               (recur 1 init))))
+           (when
+               (loop [n n
+                      xs (rf xs v)]
+                 (if (== n size)
+                   (a/>!! out xs)
+                   (let [[v ch] (a/alts!! [in t])]
+                     (if (identical? ch in)
+                       (if (nil? v)
+                         (and (a/>!! out xs) close? (a/close! out))
+                         (recur (unchecked-inc n) (rf xs v)))
+                       (a/>!! out xs)))))
+             (recur 1 init)))
          (recur 1 init))))))
 
 (comment
@@ -449,19 +448,18 @@
          (if (identical? ch in)
            (if (nil? v)
              (when close? (a/close! out))
-             (let [xs (rf xs v)]
-               (when
-                   (loop [n n
-                          xs xs]
-                     (if (== n size)
-                       (a/>! out xs)
-                       (let [[v ch] (a/alts! [in t])]
-                         (if (identical? ch in)
-                           (if (nil? v)
-                             (and (a/>! out xs) close? (a/close! out))
-                             (recur (unchecked-inc n) (rf xs v)))
-                           (a/>! out xs)))))
-                 (recur 1 init))))
+             (when
+                 (loop [n n
+                        xs (rf xs v)]
+                   (if (== n size)
+                     (a/>! out xs)
+                     (let [[v ch] (a/alts! [in t])]
+                       (if (identical? ch in)
+                         (if (nil? v)
+                           (and (a/>! out xs) close? (a/close! out))
+                           (recur (unchecked-inc n) (rf xs v)))
+                         (a/>! out xs)))))
+               (recur 1 init)))
            (recur 1 init)))))))
 
 (defn batch
