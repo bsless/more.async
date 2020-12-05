@@ -431,7 +431,7 @@
   Batches with reducing function rf into initial value init.
   If init is not supplied rf is called with zero args."
   ([in out size timeout rf close?]
-   (batch!! in out size timeout rf (rf) close?))
+   (batch! in out size timeout rf (rf) close?))
   ([in out size timeout rf init close?]
    (a/go-loop [n 1
                t (a/timeout timeout)
