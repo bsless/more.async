@@ -21,52 +21,49 @@
   [ch & body]
   `(put-recur!* ~ch (fn* [] ~@body)))
 
-(defn produce*
-  "Put the contents repeatedly calling f into the supplied channel.
+(defn produce-call!
+  "Put the contents repeatedly calling `f` into the supplied channel.
 
-  By default the channel will be closed if f returns nil.
-
-  Based on clojure.core.async/onto-chan.
-  Equivalent to (onto-chan ch (repeatedly f)) but cuts out the seq."
-  ([ch f] (produce* ch f true))
+  By default the channel will be closed if f returns nil."
+  ([ch f] (produce-call! ch f true))
   ([ch f close?]
    (a/go-loop []
      (let [v (f)]
-       (if (and v (a/>! ch v))
+       (if (and (some? v) (a/>! ch v))
          (recur)
          (when close?
            (a/close! ch)))))))
 
-(defmacro produce
+(defmacro produce!
   "Execute `body` repeatedly in a go-loop and put its results into
   output `ch`."
   [ch & body]
-  `(produce* ~ch (fn* [] ~@body)))
+  `(produce-call! ~ch (fn* [] ~@body)))
 
-(defn produce-blocking*
+(defn produce-call!!
   "Put the contents of repeatedly calling `f` into the supplied channel
   `ch`.
 
   By default the channel will be closed if f returns nil.
 
-  Like `produce*` but blocking.
+  Like [[produce-call!]] but blocking.
   Should be called inside a thread or a future."
   ([ch f]
-   (produce-blocking* ch f true))
+   (produce-call!! ch f true))
   ([ch f close?]
    (loop []
      (let [v (f)]
-       (if (and v (a/>!! ch v))
+       (if (and (some? v) (a/>!! ch v))
          (recur)
          (when close?
            (a/close! ch)))))))
 
-(defmacro produce-blocking
+(defmacro produce!!
   "Execute body repeatedly in a loop and put its results into output `ch`.
-  Like `produce*` but blocking.
+  Like [[produce!]] but blocking.
   Should be called inside a thread or a future."
   [ch & body]
-  `(produce-blocking* ~ch (fn* [] ~@body)))
+  `(produce-call!! ~ch (fn* [] ~@body)))
 
 (defn take-recur!*
   "Repeatedly [[a/take!]] from `ch` and apply `f` to the consumed value.
@@ -80,15 +77,14 @@
                   (a/take! ch loop-fn)))))
 
 (defmacro take-recur!
-  "Repeatedly [[a/take!]] from `ch` and apply `body` to the consumed value.
-  `v` introduces a binding for the consumed value inside `body`'s context.
+  "Repeatedly [[a/take!]] from `ch` as `v` and evaluate `body` with it.
   All limitations which apply to [[a/take!]] apply here as well.
   Stops recurring when the channel is closed.
   Uses the core.async fixed size dispatch thread pool."
   [ch v & body]
   `(take-recur!* ~ch (fn* [~v] ~@body)))
 
-(defn consume*
+(defn consume-call!
   "Take values repeatedly from `ch` and apply `f` to them.
 
   The opposite of produce.
@@ -100,16 +96,16 @@
       (f v)
       (recur))))
 
-(defmacro consume
-  "Takes values repeatedly from `ch` as `v` and run `body`.
+(defmacro consume!
+  "Takes values repeatedly from `ch` as `v` and evaluate `body` with it.
 
   The opposite of produce.
 
   Stops consuming values when the channel is closed."
   [ch v & body]
-  `(consume* ~ch (fn* [~v] ~@body)))
+  `(consume-call! ~ch (fn* [~v] ~@body)))
 
-(defn consume?*
+(defn consume-checked-call!
   "Take values repeatedly from `ch` and apply `f` to them.
   Recur only when `f` returns a non false-y value.
 
@@ -122,7 +118,7 @@
       (when (f v)
         (recur)))))
 
-(defmacro consume?
+(defmacro consume-checked!
   "Take values repeatedly from `ch` as `v` and run `body`.
 
   The opposite of produce.
@@ -130,57 +126,57 @@
   Stops consuming values when the channel is closed or body evaluates to a
   false-y value."
   [ch v & body]
-  `(consume?* ~ch (fn* [~v] ~@body)))
+  `(consume-checked-call! ~ch (fn* [~v] ~@body)))
 
-(defn consume-blocking*
+(defn consume-call!!
   "Take values repeatedly from `ch` and applies `f` to them.
 
   The opposite of produce.
 
   Stops consuming values when the channel is closed.
-  Like `consume*` but blocking."
+  Like [[consume-call!]] but blocking."
   [ch f]
   (loop []
     (when-some [v (a/<!! ch)]
       (f v)
       (recur))))
 
-(defmacro consume-blocking
-  "Take values repeatedly from `ch` as `v` and run `body`.
+(defmacro consume!!
+  "Take values repeatedly from `ch` as `v` and evaluate `body` with it.
 
   The opposite of produce.
 
   Stops consuming values when the channel is closed.
-  Like `consume` but blocking."
+  Like [[consume!]] but blocking."
   [ch v & body]
-  `(consume-blocking* ~ch (fn* [~v] ~@body)))
+  `(consume-call!! ~ch (fn* [~v] ~@body)))
 
-(defn consume-blocking?*
+(defn consume-checked-call!!
   "Takes values repeatedly from `ch` and applies `f` to them.
   Recurs only when `f` returns a non false-y value.
 
   The opposite of produce.
 
   Stops consuming values when the channel is closed.
-  Like `consume?` but blocking."
+  Like [[consume-checked-call!]] but blocking."
   [ch f]
   (loop []
     (when-some [v (a/<!! ch)]
       (when (f v)
         (recur)))))
 
-(defmacro consume-blocking?
+(defmacro consume-checked!!
   "Takes values repeatedly from `ch` as `v` and evaluate `body`.
   Recurs only when `body` evaluates to a non false-y value.
 
   The opposite of produce.
 
   Stops consuming values when the channel is closed.
-  Like `consume?` but blocking."
+  Like [[consume-checked!]] but blocking."
   [ch v & body]
-  `(consume-blocking?* ~ch (fn* [~v] ~@body)))
+  `(consume-checked-call!! ~ch (fn* [~v] ~@body)))
 
-(defn split*
+(defn split!
   "Takes a channel, function f :: v -> k and a map of keys to channels k -> ch,
   routing the values v from the input channel to the channel such that
   (f v) -> ch.
@@ -196,7 +192,7 @@
              (recur))
            (throw (Exception. "Channel does not exist"))))))))
 
-(defn split-maybe
+(defn split?!
   "Takes a channel, function f :: v -> k and a map of keys to channels k -> ch,
   routing the values v from the input channel to the channel such that
   (f v) -> ch.
@@ -294,11 +290,11 @@
          (mapcat (fn [[x y]] [cf x y]) (partition 2 es-ehs))]
      `(interrupt-controls ~f ~ctl ~@cfs-es-ehs))))
 
-(defn reductions*
+(defn reductions!
   "Like core/reductions, but takes elements from in channel and
   produces them to out channel."
   ([rf init in out]
-   (reductions* rf init in out true))
+   (reductions! rf init in out true))
   ([rf init in out close?]
    (a/go-loop
        [state init]
@@ -369,7 +365,7 @@
 
 (comment
  (def out (periodically! (constantly 1) 1000))
- (consume out v (println v))
+ (consume! out v (println v))
  (a/close! out))
 
 (defn batch!!
@@ -399,13 +395,13 @@
 
 (comment
   (def out (a/chan))
-  (consume out v (println v))
+  (consume! out v (println v))
   (def in (a/to-chan (range 4)))
   (batch!! in out 2 100000 conj #{} true))
 
 (comment
   (def out (a/chan))
-  (consume out v (println v))
+  (consume! out v (println v))
   (def in (periodically! (constantly 1) 1000 1))
   (a/thread
     (batch!! in out 3 2000 conj [] true))
@@ -489,17 +485,17 @@
   ([tasks mode]
    (let [o (a/merge tasks)]
      (case mode
-       :blocking (consume-blocking o _ (noop))
-       :non-blocking (consume o _ (noop))))))
+       :blocking (consume!! o _ (noop))
+       :non-blocking (consume! o _ (noop))))))
 
-(defn wait
+(defn wait!
   "Wait for `tasks`, a collection of channels, to finish in a
   non-blocking context.
   Returns nothing meaningful."
   [tasks]
   (wait* tasks :non-blocking))
 
-(defn wait-blocking
+(defn wait!!
   "Wait for `tasks`, a collection of channels, to finish in a
   blocking context.
   Returns nothing meaningful."
@@ -515,12 +511,12 @@
            (cleanup)
            (a/close! p)))]))
 
-(defn wait-group*
+(defn wait-group-call
   "Run `f` `n` times in [[a/thread]] and wait for all runs to finish.
   Returns a promise chan which closes when all tasks finish.
   May run `cleanup` in the end. Cleanup is guaranteed to run once."
   ([n f]
-   (wait-group* n f noop))
+   (wait-group-call n f noop))
   ([n f cleanup]
    (let [[p cleanup] (wrap-cleanup n cleanup)]
      (mapv
@@ -531,7 +527,7 @@
 
 (comment
   (a/<!!
-   (wait-group*
+   (wait-group-call
     8
     (fn []
       (let [n (+ 1000 (rand-int 1000))]
@@ -562,7 +558,7 @@
   (let [p (partial identical? :finally)]
     (assert (<= (count (filter p body)) 1))
     (let [[body _ finally] (partition-by p body)]
-      `(wait-group* ~n (fn* [] ~@body) (fn* [] ~@finally)))))
+      `(wait-group-call ~n (fn* [] ~@body) (fn* [] ~@finally)))))
 
 (comment
   (wait-group
