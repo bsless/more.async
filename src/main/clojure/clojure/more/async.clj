@@ -386,6 +386,13 @@
  (consume! out v (println v))
  (a/close! out))
 
+(defn- assert-valid-batch
+  [size timeout]
+  (assert (number? size))
+  (assert (number? timeout))
+  (assert (pos? size))
+  (assert (pos? timeout)))
+
 (defn batch!!
   "Takes messages from in and batch them until reaching size or
   timeout ms, and puts them to out.
@@ -395,21 +402,27 @@
   ([in out size timeout rf close?]
    (batch!! in out size timeout rf (rf) close?))
   ([in out size timeout rf init close?]
-   (assert (pos? size))
-   (loop [n 1
-          t (a/timeout timeout)
-          xs init]
-     (let [[v ch] (a/alts!! [in t])]
-       (if (identical? ch in)
-         (if (nil? v)
-           (when close? (a/close! out))
-           (let [xs (rf xs v)]
-             (if (== n size)
-               (when (a/>!! out xs)
-                 (recur 1 (a/timeout timeout) init))
-               (recur (unchecked-inc n) t xs))))
-         (when (a/>!! out xs)
-           (recur 1 (a/timeout timeout) init)))))))
+   (assert-valid-batch size timeout)
+   (let [size (long size)
+         timeout (long timeout)]
+     (loop [n 0
+            xs init
+            t (a/timeout timeout)]
+       (let [[v ch] (a/alts!! [in t])]
+         (if (identical? ch in)
+           (if (nil? v)
+             (do
+               (when (pos? n) (a/>!! out xs))
+               (when close? (a/close! out)))
+             (let [n (unchecked-inc n)
+                   xs (rf xs v)]
+               (if (== n size)
+                 (do (a/>!! out xs)
+                     (recur 0 init (a/timeout timeout)))
+                 (recur n xs t))))
+           (if (pos? n)
+             (when (a/>!! out xs) (recur 0 init (a/timeout timeout)))
+             (recur n xs (a/timeout timeout)))))))))
 
 (comment
   (def out (a/chan))
@@ -433,20 +446,28 @@
   ([in out size timeout rf close?]
    (batch! in out size timeout rf (rf) close?))
   ([in out size timeout rf init close?]
-   (a/go-loop [n 1
-               t (a/timeout timeout)
-               xs init]
-     (let [[v ch] (a/alts! [in t])]
-       (if (identical? ch in)
-         (if (nil? v)
-           (when close? (a/close! out))
-           (let [xs (rf xs v)]
-             (if (== n size)
-               (when (a/>! out xs)
-                 (recur 1 (a/timeout timeout) init))
-               (recur (unchecked-inc n) t xs))))
-         (when (a/>! out xs)
-           (recur 1 (a/timeout timeout) init)))))))
+   (assert-valid-batch size timeout)
+   (let [size (long size)
+         timeout (long timeout)]
+     (a/go-loop
+         [n 0
+          xs init
+          t (a/timeout timeout)]
+       (let [[v ch] (a/alts! [in t])]
+         (if (identical? ch in)
+           (if (nil? v)
+             (do
+               (when (pos? n) (a/>! out xs))
+               (when close? (a/close! out)))
+             (let [nn (unchecked-inc n)
+                   nxs (rf xs v)]
+               (if (== nn size)
+                 (do (a/>! out nxs)
+                     (recur 0 init (a/timeout timeout)))
+                 (recur nn nxs t))))
+           (if (pos? n)
+             (do (a/>! out xs) (recur 0 init (a/timeout timeout)))
+             (recur n xs (a/timeout timeout)))))))))
 
 (defn batch
   "Takes messages from in and batch them until reaching size or
