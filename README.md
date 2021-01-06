@@ -1,4 +1,6 @@
 [![Clojars Project](https://img.shields.io/clojars/v/bsless/more.async.svg)](https://clojars.org/bsless/more.async)
+[![cljdoc badge](https://cljdoc.org/badge/bsless/more.async)](https://cljdoc.org/d/bsless/more.async/CURRENT)
+[![CircleCI](https://circleci.com/gh/bsless/more.async/tree/master.svg?style=shield)](https://circleci.com/gh/bsless/more.async/tree/master)
 
 # more.async
 
