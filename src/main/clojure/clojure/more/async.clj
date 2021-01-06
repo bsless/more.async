@@ -479,14 +479,6 @@
              (do (a/>! out xs) (recur 0 (init) (a/timeout timeout)))
              (recur n xs (a/timeout timeout)))))))))
 
-(defn batch
-  "Takes messages from in and batch them until reaching size or
-  timeout ms, and puts them to out."
-  ([in out size timeout]
-   (batch in out size timeout true))
-  ([in out size timeout close?]
-   (batch! in out size timeout conj (constantly []) close?)))
-
 (defn ooo-pipeline
   "Takes elements from the from channel and supplies them to the to
   channel, subject to the transducer xf, with parallelism n. Because it
