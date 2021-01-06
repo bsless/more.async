@@ -394,19 +394,17 @@
   (assert (pos? timeout)))
 
 (defn batch!!
-  "Takes messages from in and batch them until reaching size or
-  timeout ms, and puts them to out.
-  Batches with reducing function rf into initial value init.
+  "Takes messages from `in` and batch them until reaching `size` or
+  `timeout` ms, and puts them to `out`.
+  Batches with reducing function `rf` into initial value derived from calling `init`.
   If init is not supplied rf is called with zero args.
   Like [[batch!]] but blocking."
-  ([in out size timeout rf close?]
-   (batch!! in out size timeout rf (rf) close?))
   ([in out size timeout rf init close?]
    (assert-valid-batch size timeout)
    (let [size (long size)
          timeout (long timeout)]
      (loop [n 0
-            xs init
+            xs (init)
             t (a/timeout timeout)]
        (let [[v ch] (a/alts!! [in t])]
          (if (identical? ch in)
@@ -418,40 +416,38 @@
                    xs (rf xs v)]
                (if (== n size)
                  (do (a/>!! out xs)
-                     (recur 0 init (a/timeout timeout)))
+                     (recur 0 (init) (a/timeout timeout)))
                  (recur n xs t))))
            (if (pos? n)
-             (when (a/>!! out xs) (recur 0 init (a/timeout timeout)))
+             (when (a/>!! out xs) (recur 0 (init) (a/timeout timeout)))
              (recur n xs (a/timeout timeout)))))))))
 
 (comment
   (def out (a/chan))
   (consume! out v (println v))
   (def in (a/to-chan (range 4)))
-  (batch!! in out 2 100000 conj #{} true))
+  (batch!! in out 2 100000 conj (constantly #{}) true))
 
 (comment
   (def out (a/chan))
   (consume! out v (println v))
   (def in (periodically! (constantly 1) 1000 1))
   (a/thread
-    (batch!! in out 3 2000 conj [] true))
+    (batch!! in out 3 2000 conj (constantly []) true))
   (a/close! in))
 
 (defn batch!
-  "Takes messages from in and batch them until reaching size or
-  timeout ms, and puts them to out.
-  Batches with reducing function rf into initial value init.
+  "Takes messages from `in` and batch them until reaching `size` or
+  `timeout` ms, and puts them to `out`.
+  Batches with reducing function `rf` into initial value derived from calling `init`.
   If init is not supplied rf is called with zero args."
-  ([in out size timeout rf close?]
-   (batch! in out size timeout rf (rf) close?))
   ([in out size timeout rf init close?]
    (assert-valid-batch size timeout)
    (let [size (long size)
          timeout (long timeout)]
      (a/go-loop
          [n 0
-          xs init
+          xs (init)
           t (a/timeout timeout)]
        (let [[v ch] (a/alts! [in t])]
          (if (identical? ch in)
@@ -463,10 +459,10 @@
                    nxs (rf xs v)]
                (if (== nn size)
                  (do (a/>! out nxs)
-                     (recur 0 init (a/timeout timeout)))
+                     (recur 0 (init) (a/timeout timeout)))
                  (recur nn nxs t))))
            (if (pos? n)
-             (do (a/>! out xs) (recur 0 init (a/timeout timeout)))
+             (do (a/>! out xs) (recur 0 (init) (a/timeout timeout)))
              (recur n xs (a/timeout timeout)))))))))
 
 (defn batch
@@ -475,7 +471,7 @@
   ([in out size timeout]
    (batch in out size timeout true))
   ([in out size timeout close?]
-   (batch! in out size timeout conj close?)))
+   (batch! in out size timeout conj (constantly []) close?)))
 
 (defn ooo-pipeline
   "Takes elements from the from channel and supplies them to the to

@@ -80,7 +80,7 @@
     (let [out (a/chan)
           in (a/to-chan (range 9))]
       (a/thread
-        (sut/batch!! in out 3 100000 conj #{} true))
+        (sut/batch!! in out 3 100000 conj (constantly #{}) true))
       (t/is (= #{0 1 2} (a/<!! out)))
       (t/is (= #{3 4 5} (a/<!! out)))
       (t/is (= #{6 7 8} (a/<!! out)))
@@ -88,7 +88,7 @@
   (t/testing "batch async"
     (let [out (a/chan)
           in (a/to-chan (range 9))]
-      (sut/batch! in out 3 100000 conj #{} true)
+      (sut/batch! in out 3 100000 conj (constantly #{}) true)
       (t/is (= #{0 1 2} (a/<!! out)))
       (t/is (= #{3 4 5} (a/<!! out)))
       (t/is (= #{6 7 8} (a/<!! out)))
@@ -98,7 +98,7 @@
           f (ticker)
           in (sut/periodically! f 100)]
       (a/thread
-        (sut/batch!! in out 3 220 conj #{} true))
+        (sut/batch!! in out 3 220 conj (constantly #{}) true))
       (t/is (= #{1 2} (a/<!! out)))
       (t/is (= #{3 4} (a/<!! out)))
       (t/is (= #{5 6} (a/<!! out)))
@@ -108,7 +108,7 @@
     (let [out (a/chan)
           in (a/chan)]
       (a/thread
-        (sut/batch!! in out 3 220 conj #{} true))
+        (sut/batch!! in out 3 220 conj (constantly #{}) true))
       (t/is (= :timeout
                (a/alt!!
                 out :batch
@@ -119,7 +119,7 @@
     (let [out (a/chan)
           f (ticker)
           in (sut/periodically! f 100)]
-      (sut/batch! in out 3 220 conj #{} true)
+      (sut/batch! in out 3 220 conj (constantly #{}) true)
       (t/is (= #{1 2} (a/<!! out)))
       (t/is (= #{3 4} (a/<!! out)))
       (t/is (= #{5 6} (a/<!! out)))
@@ -129,7 +129,7 @@
     (let [out (a/chan)
           in (a/chan)]
       (a/thread
-        (sut/batch!! in out 3 220 conj #{} true))
+        (sut/batch!! in out 3 220 conj (constantly #{}) true))
       (t/is (= :timeout
                (a/alt!!
                  out :batch
