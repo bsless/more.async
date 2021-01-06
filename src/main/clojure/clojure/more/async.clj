@@ -512,7 +512,9 @@
   ([n to af from] (ooo-pipeline-async n to af from true))
   ([n to af from close?] (impl.pipe/ooo-pipeline* n to af from close? nil :async)))
 
-(defn- noop [])
+(defn- noop
+  ([])
+  ([_]))
 
 (defn wait*
   "Wait for `tasks`, a collection of channels, to finish.
