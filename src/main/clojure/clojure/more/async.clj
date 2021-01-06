@@ -522,8 +522,8 @@
   ([tasks mode]
    (let [o (a/merge tasks)]
      (case mode
-       :blocking (consume!! o _ (noop))
-       :non-blocking (consume! o _ (noop))))))
+       :blocking (consume-call!! o noop)
+       :non-blocking (consume-call! o noop)))))
 
 (defn wait!
   "Wait for `tasks`, a collection of channels, to finish in a
