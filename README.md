@@ -159,7 +159,7 @@ stream.
 
 Add the following dependency in your leiningen project:
 ```clojure
-[bsless/more.async "0.0.4"]
+[bsless/more.async "0.0.5"]
 ```
 
 ### Require
