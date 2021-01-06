@@ -398,7 +398,14 @@
   `timeout` ms, and puts them to `out`.
   Batches with reducing function `rf` into initial value derived from calling `init`.
   If init is not supplied rf is called with zero args.
+  By default will use conj and a vector.
   Like [[batch!]] but blocking."
+  ([in out size timeout]
+   (batch!! in out size timeout conj))
+  ([in out size timeout rf]
+   (batch!! in out size timeout rf rf))
+  ([in out size timeout rf init]
+   (batch!! in out size timeout rf init true))
   ([in out size timeout rf init close?]
    (assert-valid-batch size timeout)
    (let [size (long size)
@@ -440,7 +447,14 @@
   "Takes messages from `in` and batch them until reaching `size` or
   `timeout` ms, and puts them to `out`.
   Batches with reducing function `rf` into initial value derived from calling `init`.
-  If init is not supplied rf is called with zero args."
+  If init is not supplied rf is called with zero args.
+  By default will use conj and a vector."
+  ([in out size timeout]
+   (batch! in out size timeout conj))
+  ([in out size timeout rf]
+   (batch! in out size timeout rf rf))
+  ([in out size timeout rf init]
+   (batch! in out size timeout rf init true))
   ([in out size timeout rf init close?]
    (assert-valid-batch size timeout)
    (let [size (long size)
