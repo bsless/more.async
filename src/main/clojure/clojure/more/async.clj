@@ -296,18 +296,13 @@
   ([rf init in out]
    (reductions! rf init in out true))
   ([rf init in out close?]
-   (a/go-loop
-       [state init]
-     (a/alt!
-       in
-       ([v]
-        (if v
-          (recur
-           (rf state v))
-          (when close?
-            (a/close! out))))
-       [[out state]]
-       (recur state)))))
+   (a/go-loop [state init]
+     (let [[v ch] (a/alts! [in [out state]])]
+       (if (identical? ch in)
+         (if v
+           (recur (rf state v))
+           (when close? (a/close! out)))
+         (recur state))))))
 
 (defn reductions!!
   "Like core/reductions, but takes elements from in channel and
@@ -316,16 +311,12 @@
    (reductions!! rf init in out true))
   ([rf init in out close?]
    (loop [state init]
-     (a/alt!!
-       in
-       ([v]
-        (if v
-          (recur
-           (rf state v))
-          (when close?
-            (a/close! out))))
-       [[out state]]
-       (recur state)))))
+     (let [[v ch] (a/alts!! [in [out state]])]
+       (if (identical? ch in)
+         (if v
+           (recur (rf state v))
+           (when close? (a/close! out)))
+         (recur state))))))
 
 (defn do-mux
   [chans-map out]
