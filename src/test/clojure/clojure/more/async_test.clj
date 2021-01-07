@@ -75,6 +75,23 @@
     (a/close! in)
     (t/is (nil? (a/<!! out)))))
 
+(t/deftest reductions!!
+  (let [in (a/chan)
+        out (a/chan)
+        f (fnil inc 0)
+        rf (fn [acc x] (update acc x f))]
+    (a/thread
+      (sut/reductions!! rf {} in out))
+    (t/is (= {} (a/<!! out)))
+    (a/put! in :a)
+    (t/is (= {:a 1} (a/<!! out)))
+    (a/put! in :a)
+    (t/is (= {:a 2} (a/<!! out)))
+    (a/put! in :b)
+    (t/is (= {:a 2 :b 1} (a/<!! out)))
+    (a/close! in)
+    (t/is (nil? (a/<!! out)))))
+
 (t/deftest batch
   (t/testing "batch blocking"
     (let [out (a/chan)
