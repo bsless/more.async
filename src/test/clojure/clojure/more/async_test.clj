@@ -59,7 +59,7 @@
     (t/is (= :blocked
              (deref (future (a/<!! o)) 20 :blocked)))))
 
-(t/deftest reductions*
+(t/deftest reductions!
   (let [in (a/chan)
         out (a/chan)
         f (fnil inc 0)
