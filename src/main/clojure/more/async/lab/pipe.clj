@@ -1,4 +1,4 @@
-(ns clojure.more.async.lab.pipe
+(ns more.async.lab.pipe
   (:require
    [clojure.core.async :as a]
    [clojure.more.async.lab.channels :refer [reopen!]]))

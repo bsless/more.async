@@ -1,7 +1,7 @@
-(ns clojure.more.async
+(ns more.async
   (:require
    [clojure.core.async :as a]
-   [clojure.more.async.impl.pipe :as impl.pipe]))
+   [more.async.impl.pipe :as impl.pipe]))
 
 (defn put-recur!*
   "Repeatedly [[a/put!]] into `ch` the results of invoking `f`.

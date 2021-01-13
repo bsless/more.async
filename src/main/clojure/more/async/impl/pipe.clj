@@ -1,4 +1,4 @@
-(ns clojure.more.async.impl.pipe
+(ns more.async.impl.pipe
   (:require
    [clojure.core.async :as a]))
 
