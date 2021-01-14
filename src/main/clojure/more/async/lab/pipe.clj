@@ -1,7 +1,7 @@
 (ns more.async.lab.pipe
   (:require
    [clojure.core.async :as a]
-   [clojure.more.async.lab.channels :refer [reopen!]]))
+   [more.async.lab.channels :refer [reopen!]]))
 
 (defn recycle-ooo-pipeline*
   ([n to xf from close? ex-handler type]

@@ -2,7 +2,7 @@
   (:require
    [clojure.core.async :as a]
    [clojure.walk]
-   [clojure.more.async :as ma]
+   [more.async :as ma]
    [flatland.useful.utils :refer [thread-local]])
   (:import [org.apache.kafka.clients.consumer ConsumerRebalanceListener KafkaConsumer OffsetCommitCallback]
            [org.apache.kafka.common.serialization ByteArrayDeserializer Deserializer StringDeserializer]
