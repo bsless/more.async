@@ -162,11 +162,14 @@ Add the following dependency in your leiningen project:
 [bsless/more.async "0.0.5"]
 ```
 
+NOTE: breaking change as of `0.0.6`: more.async namespaces have been
+renamed and removed the clojure prefix
+
 ### Require
 
 ```clojure
 (require '[clojure.core.async :as a]
-         '[clojure.more.async :as ma])
+         '[more.async :as ma])
 ```
 
 ### Use
