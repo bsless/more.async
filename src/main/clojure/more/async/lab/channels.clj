@@ -1,4 +1,4 @@
-(ns clojure.more.async.lab.channels
+(ns more.async.lab.channels
   (:import
    [clojure.core.async.impl.channels ManyToManyChannel]))
 

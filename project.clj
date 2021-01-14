@@ -24,4 +24,4 @@
                     "-XX:+DebugNonSafepoints"]
          :plugins [[lein-ancient "0.6.15"]]}}
 
-  :repl-options {:init-ns clojure.more.async})
+  :repl-options {:init-ns more.async})

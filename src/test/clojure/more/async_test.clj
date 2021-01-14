@@ -1,7 +1,7 @@
-(ns clojure.more.async-test
+(ns more.async-test
   (:require
    [clojure.core.async :as a]
-   [clojure.more.async :as sut]
+   [more.async :as sut]
    [clojure.test :as t]))
 
 (defn ticker

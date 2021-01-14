@@ -1,4 +1,4 @@
-(ns clojure.more.async.lab.async
+(ns more.async.lab.async
   (:require
    [clojure.core.async :as a]))
 

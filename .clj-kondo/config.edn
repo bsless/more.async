@@ -1,4 +1,4 @@
-{:hooks {:analyze-call {clojure.more.async/consume! hooks.consume/consume
-                        clojure.more.async/consume-checked! hooks.consume/consume?
-                        clojure.more.async/consume-checked!! hooks.consume/consume-blocking?
-                        clojure.more.async/consume!! hooks.consume/consume-blocking}}}
+{:hooks {:analyze-call {more.async/consume! hooks.consume/consume
+                        more.async/consume-checked! hooks.consume/consume?
+                        more.async/consume-checked!! hooks.consume/consume-blocking?
+                        more.async/consume!! hooks.consume/consume-blocking}}}

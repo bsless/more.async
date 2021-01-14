@@ -1,5 +1,17 @@
 # Change Log
 
+## [unreleased] - 2021-01-13
+
+- BREAKING CHANGE: remove clojure name from all namespaces
+
+## [0.0.5]
+
+- add waiting conventions
+- Rename all core function
+- Fix bugs in batch
+- Reductions api similar to transduce
+- Add circleci integration
+
 ## [0.0.4] - 2020-04-05
 
 ### Changed

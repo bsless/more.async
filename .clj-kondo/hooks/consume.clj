@@ -7,7 +7,7 @@
       (throw (ex-info "No sym and val provided" {})))
     (let [new-node (api/list-node
                     (list
-                     (api/token-node 'clojure.more.async/consume-call!)
+                     (api/token-node 'more.async/consume-call!)
                      ch
                      (api/list-node
                       (list*
@@ -22,7 +22,7 @@
       (throw (ex-info "No sym and val provided" {})))
     (let [new-node (api/list-node
                     (list
-                     (api/token-node 'clojure.more.async/consume-call!!)
+                     (api/token-node 'more.async/consume-call!!)
                      ch
                      (api/list-node
                       (list*
@@ -37,7 +37,7 @@
       (throw (ex-info "No sym and val provided" {})))
     (let [new-node (api/list-node
                     (list
-                     (api/token-node 'clojure.more.async/consume-checked-call!)
+                     (api/token-node 'more.async/consume-checked-call!)
                      ch
                      (api/list-node
                       (list*
@@ -52,7 +52,7 @@
       (throw (ex-info "No sym and val provided" {})))
     (let [new-node (api/list-node
                     (list
-                     (api/token-node 'clojure.more.async/consume-checked-call!!)
+                     (api/token-node 'more.async/consume-checked-call!!)
                      ch
                      (api/list-node
                       (list*
