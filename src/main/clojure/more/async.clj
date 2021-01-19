@@ -2,6 +2,7 @@
   (:refer-clojure :exclude [merge])
   (:require
    [clojure.core.async :as a]
+   [clojure.core.async.impl.protocols :refer [MAX-QUEUE-SIZE]]
    [more.async.impl.pipe :as impl.pipe]))
 
 (alias 'core 'clojure.core)
@@ -608,3 +609,21 @@
      (println n))
    :finally
    (println "goodbye!")))
+
+(defn merge!
+  "Like [[merge]] but less fair and probably faster for small `from` counts."
+  ([from to]
+   (merge! from to true))
+  ([from to close?]
+   (let [n (count from)]
+     (assert (>= MAX-QUEUE-SIZE n))
+     (let [[p cleanup] (wrap-cleanup n #(when close? (a/close! to)))]
+       (doseq [ch from]
+         (a/go-loop []
+           (let [v (a/<! ch)]
+             (if (nil? v)
+               (cleanup)
+               (when (a/>! to v)
+                 (recur))))))
+       p))))
+
