@@ -1,7 +1,10 @@
 (ns more.async
+  (:refer-clojure :exclude [merge])
   (:require
    [clojure.core.async :as a]
    [more.async.impl.pipe :as impl.pipe]))
+
+(alias 'core 'clojure.core)
 
 (defn put-recur!*
   "Repeatedly [[a/put!]] into `ch` the results of invoking `f`.
@@ -208,10 +211,13 @@
              (recur))
            (recur)))))))
 
-(defn merge!
-  [from to]
-  (let [o (a/merge from)]
-    (a/pipe o to)))
+(defn merge
+  "Like [[clojure.core.async/merge]] but pipes all channels to `to`."
+  ([from to]
+   (merge from to))
+  ([from to close?]
+   (let [o (a/merge from)]
+     (a/pipe o to close?))))
 
 (defn fan!
   "Partition values from `from` by `f` and apply `xf` to each partition.
@@ -240,7 +246,7 @@
       (let [v (a/<! from)]
         (if (nil? v)
           (let [cs (vals @ma)]
-            (merge! cs to)
+            (merge cs to)
             (doseq [c cs] (a/close! c)))
           (let [o (get-chan! v)]
             (when (a/>! o v) (recur))))))))
