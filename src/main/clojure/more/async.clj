@@ -655,3 +655,20 @@
                  (recur))))))
        p))))
 
+(defn round-robin!
+  [from to]
+  (let [chs (into [] to)
+        n (count to)]
+    (a/go-loop [i 0
+                chs chs
+                n n]
+      (let [v (a/<! from)]
+        (if (nil? v)
+          (doseq [ch chs] (a/close! ch))
+          (let [ch (chs i)
+                ret (a/>! ch v)]
+            (if ret
+              (recur (mod (inc i) n) chs n)
+              (let [n (dec n)]
+                (when (pos? n)
+                  (recur 0 (into [] (remove #{ch}) chs) (dec n)))))))))))

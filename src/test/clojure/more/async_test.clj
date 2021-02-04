@@ -163,3 +163,13 @@
       (sut/wait-group 3 (f) (f) :finally (cleanup))
       (t/is (= 6 @a))
       (t/is (= 1 @a')))))
+
+(t/deftest round-roin!
+  (t/testing ""
+    (t/is
+     (= [[0 3 6 9] [1 4 7] [2 5 8]]
+        (mapv a/<!!
+              (let [to (repeatedly 3 a/chan)
+                    from (a/to-chan (range 10))]
+                (sut/round-robin! from to)
+                (mapv #(a/into [] %) to)))))))

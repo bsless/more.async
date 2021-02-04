@@ -4,6 +4,7 @@
 
 - rename reductions* to selecting-reductions*
 - add reductions pipeline
+- Add round-robin!
 
 ## [0.0.7] - 2021-01-13
 
