@@ -1,6 +1,10 @@
 # Change Log
 
-## [unreleased] - 2021-01-13
+## [unreleased] 2021-02-04
+
+- rename reductions* to selecting-reductions*
+
+## [0.0.7] - 2021-01-13
 
 - BREAKING CHANGE: remove clojure name from all namespaces
 
