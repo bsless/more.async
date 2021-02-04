@@ -297,6 +297,34 @@
          (mapcat (fn [[x y]] [cf x y]) (partition 2 es-ehs))]
      `(interrupt-controls ~f ~ctl ~@cfs-es-ehs))))
 
+(defn reductions!
+  "Like core/reductions, but takes elements from in channel and
+  produces them to out channel."
+  ([rf init in out]
+   (reductions! rf init in out true))
+  ([rf init in out close?]
+   (a/go-loop [state init]
+     (let [v (a/<! in)]
+       (if (nil? v)
+         (when close? (a/close! out))
+         (let [state (rf state v)]
+           (when (a/>! out state)
+             (recur state))))))))
+
+(defn reductions!!
+  "Like core/reductions, but takes elements from in channel and
+  produces them to out channel."
+  ([rf init in out]
+   (reductions!! rf init in out true))
+  ([rf init in out close?]
+   (loop [state init]
+     (let [v (a/<!! in)]
+       (if (nil? v)
+         (when close? (a/close! out))
+         (let [state (rf state v)]
+           (when (a/>!! out state)
+             (recur state))))))))
+
 (defn selecting-reductions!
   "Like core/reductions, but takes elements from in channel and
   produces them to out channel."

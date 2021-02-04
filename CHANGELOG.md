@@ -3,6 +3,7 @@
 ## [unreleased] 2021-02-04
 
 - rename reductions* to selecting-reductions*
+- add reductions pipeline
 
 ## [0.0.7] - 2021-01-13
 
