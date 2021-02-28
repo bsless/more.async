@@ -672,3 +672,35 @@
               (let [n (dec n)]
                 (when (pos? n)
                   (recur 0 (into [] (remove #{ch}) chs) (dec n)))))))))))
+
+(defn- ceil-quot
+  [n m]
+  (int (Math/ceil (/ n m))))
+
+(defn wide-pipeline-async
+  [n buf-or-n to af from close?]
+  (let [k (ceil-quot n MAX-QUEUE-SIZE)
+        n' (quot n k)
+        change (- n (* k n'))
+        sizes
+        (map (partial + n') (concat (repeat change 1) (repeat (- k change) 0)))
+        chans (mapv (fn [_] (a/chan buf-or-n)) sizes)
+        _ (merge! chans to close?)
+        pipes (mapv (fn [size ch] (a/pipeline-async size ch af from close?)) sizes chans)]
+    [chans pipes]))
+
+(defn delay-pipe
+  "Delay inputs from `from` by the value returned by `timeout-fn` applied
+  to each input, and pipe them to `to`. Can delay up to `size` inputs in
+  parallel. If the size is greater than 1024 then there are no ordering
+  guarantees even for constant timeouts.
+  `timeout-fn` must return a number."
+  ([size from to timeout-fn]
+   (delay-pipe size from to timeout-fn true))
+  ([size from to timeout-fn close?]
+   (let [af (fn [v o] (a/go (a/<! (a/timeout (timeout-fn v)))
+                           (a/put! o v)
+                           (a/close! o)))]
+     (if (> size MAX-QUEUE-SIZE)
+       (wide-pipeline-async size 1 to af from close?)
+       (a/pipeline-async size to af from close?)))))

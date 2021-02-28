@@ -173,3 +173,23 @@
                     from (a/to-chan (range 10))]
                 (sut/round-robin! from to)
                 (mapv #(a/into [] %) to)))))))
+
+
+(t/deftest widw-pipeline-async
+  (t/testing "Pipeline async with parallelism > 1024, weak ordering guarantees"
+    (let [x 4000
+          out (a/chan 2000)
+          coll (a/to-chan (range x))
+          in (a/chan 2000)]
+      (a/pipe coll in)
+      (Thread/sleep 100)
+      (sut/wide-pipeline-async
+       4000
+       1
+       out
+       (fn [v o] (a/go (a/<! (a/timeout 50)) (a/put! o v) (a/close! o)))
+       in
+       true)
+      (let [res (a/<!! (a/into [] out))]
+        (t/is (= x (count res)))
+        (t/is (= (set (range x)) (set res)))))))

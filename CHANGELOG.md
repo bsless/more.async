@@ -5,6 +5,8 @@
 - rename reductions* to selecting-reductions*
 - add reductions pipeline
 - Add round-robin!
+- Add wide pipeline async
+- Add delay pipe
 
 ## [0.0.7] - 2021-01-13
 
