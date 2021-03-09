@@ -425,6 +425,8 @@
   Batches with reducing function `rf` into initial value derived from calling `init`.
   If init is not supplied rf is called with zero args.
   By default will use conj and a vector.
+  Optionally takes a `final` function (default identity) to call on each batch.
+  Useful when building up transient collections.
   Like [[batch!]] but blocking."
   ([in out size timeout]
    (batch!! in out size timeout conj))
@@ -433,6 +435,8 @@
   ([in out size timeout rf init]
    (batch!! in out size timeout rf init true))
   ([in out size timeout rf init close?]
+   (batch!! in out size timeout rf init identity close?))
+  ([in out size timeout rf init final close?]
    (assert-valid-batch size timeout)
    (let [size (long size)
          timeout (long timeout)]
@@ -448,11 +452,11 @@
              (let [n (unchecked-inc n)
                    xs (rf xs v)]
                (if (== n size)
-                 (do (a/>!! out xs)
+                 (do (a/>!! out (final xs))
                      (recur 0 (init) (a/timeout timeout)))
                  (recur n xs t))))
            (if (pos? n)
-             (when (a/>!! out xs) (recur 0 (init) (a/timeout timeout)))
+             (when (a/>!! out (final xs)) (recur 0 (init) (a/timeout timeout)))
              (recur n xs (a/timeout timeout)))))))))
 
 (comment
@@ -474,7 +478,9 @@
   `timeout` ms, and puts them to `out`.
   Batches with reducing function `rf` into initial value derived from calling `init`.
   If init is not supplied rf is called with zero args.
-  By default will use conj and a vector."
+  By default will use conj and a vector.
+  Optionally takes a `final` function (default identity) to call on each batch.
+  Useful when building up transient collections."
   ([in out size timeout]
    (batch! in out size timeout conj))
   ([in out size timeout rf]
@@ -482,6 +488,8 @@
   ([in out size timeout rf init]
    (batch! in out size timeout rf init true))
   ([in out size timeout rf init close?]
+   (batch! in out size timeout rf init identity close?))
+  ([in out size timeout rf init final close?]
    (assert-valid-batch size timeout)
    (let [size (long size)
          timeout (long timeout)]
@@ -498,11 +506,11 @@
              (let [nn (unchecked-inc n)
                    nxs (rf xs v)]
                (if (== nn size)
-                 (do (a/>! out nxs)
+                 (do (a/>! out (final nxs))
                      (recur 0 (init) (a/timeout timeout)))
                  (recur nn nxs t))))
            (if (pos? n)
-             (do (a/>! out xs) (recur 0 (init) (a/timeout timeout)))
+             (do (a/>! out (final xs)) (recur 0 (init) (a/timeout timeout)))
              (recur n xs (a/timeout timeout)))))))))
 
 (defn ooo-pipeline

@@ -102,10 +102,27 @@
       (t/is (= #{3 4 5} (a/<!! out)))
       (t/is (= #{6 7 8} (a/<!! out)))
       (t/is (nil? (a/<!! out)))))
+  (t/testing "batch blocking finalizer"
+    (let [out (a/chan)
+          in (a/to-chan (range 9))]
+      (a/thread
+        (sut/batch!! in out 3 100000 conj! #(transient #{}) persistent! true))
+      (t/is (= #{0 1 2} (a/<!! out)))
+      (t/is (= #{3 4 5} (a/<!! out)))
+      (t/is (= #{6 7 8} (a/<!! out)))
+      (t/is (nil? (a/<!! out)))))
   (t/testing "batch async"
     (let [out (a/chan)
           in (a/to-chan (range 9))]
       (sut/batch! in out 3 100000 conj (constantly #{}) true)
+      (t/is (= #{0 1 2} (a/<!! out)))
+      (t/is (= #{3 4 5} (a/<!! out)))
+      (t/is (= #{6 7 8} (a/<!! out)))
+      (t/is (nil? (a/<!! out)))))
+  (t/testing "batch async finalizer"
+    (let [out (a/chan)
+          in (a/to-chan (range 9))]
+      (sut/batch! in out 3 100000 conj! #(transient #{}) persistent! true)
       (t/is (= #{0 1 2} (a/<!! out)))
       (t/is (= #{3 4 5} (a/<!! out)))
       (t/is (= #{6 7 8} (a/<!! out)))
