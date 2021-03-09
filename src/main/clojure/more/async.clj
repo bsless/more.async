@@ -704,3 +704,40 @@
      (if (> size MAX-QUEUE-SIZE)
        (wide-pipeline-async size 1 to af from close?)
        (a/pipeline-async size to af from close?)))))
+
+(defn break-pipe
+  "Like [[clojure.core.async/pipe]] but takes a function `f` which returns a
+  timeout channel or `nil`.
+  `f` always takes one argument - the item taken from `in`, but it can be
+  ignored."
+  [f from to]
+  (a/go-loop []
+    (let [v (a/<! from)]
+      (if (nil? v)
+        (a/close! to)
+        (do
+          (when-let [t (f v)]
+            (a/<! t))
+          (when (a/>! to v)
+            (recur)))))))
+
+(defn rate->ms
+  "Convert an items/second rate to millisecond intervals.
+  Rounds the rate *down* (interval is rounded up)."
+  [^long items-per-second]
+  (int (Math/ceil (/ 1000 items-per-second))))
+
+(defn rate-limit
+  "Like [[clojure.core.async/pipe]] but limits the rate of incoming messages.
+  `rate` is in millisecond. To convert frequency to ms use [[rate->ms]]."
+  [rate from to]
+  (assert (int? rate) "Rate must be an integer")
+  (a/go-loop [timeout nil]
+    (let [v (a/<! from)]
+      (if (nil? v)
+        (a/close! to)
+        (do
+          (when timeout
+            (a/<! timeout))
+          (when (a/>! to v)
+            (recur (a/timeout rate))))))))
