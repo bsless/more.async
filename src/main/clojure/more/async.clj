@@ -749,3 +749,25 @@
             (a/<! timeout))
           (when (a/>! to v)
             (recur (a/timeout rate))))))))
+
+(def ^:private wait-until 10000)
+(def ^:private wait-interval 1000)
+
+(defn wait!
+  ([f]
+   (wait! wait-until f))
+  ([timeout f]
+   (wait! wait-interval timeout f))
+  ([interval until f]
+   (wait! interval until f nil))
+  ([interval until f value]
+   (a/go
+     (let [until (a/timeout until)]
+       (loop []
+         (if-let [v (a/<! (f))]
+           v
+           (let [timeout (a/timeout interval)
+                 [_ ch] (a/alts! [until timeout])]
+             (cond
+               (identical? ch until) value
+               (identical? ch timeout) (recur)))))))))
