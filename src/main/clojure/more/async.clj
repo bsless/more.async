@@ -754,6 +754,10 @@
 (def ^:private wait-interval 1000)
 
 (defn wait!
+  "Wait for async `f` to return a non `nil` value with timeout `until` in a channel.
+  Will call `f` every `interval` ms.
+  Optionally takes a `value` to return when timeout expires, defaults to `nil`.
+  NOTE: `f` must return a channel!"
   ([f]
    (wait! wait-until f))
   ([timeout f]
