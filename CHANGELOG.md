@@ -7,6 +7,8 @@
 - Add round-robin!
 - Add wide pipeline async
 - Add delay pipe
+- Rename wait! to join!
+- Add wait! implementation for async values
 
 ## [0.0.7] - 2021-01-13
 
