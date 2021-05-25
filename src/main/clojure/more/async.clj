@@ -556,7 +556,7 @@
   ([])
   ([_]))
 
-(defn wait*
+(defn join*
   "Wait for `tasks`, a collection of channels, to finish.
   Returns nothing meaningful."
   ([tasks mode]
@@ -565,19 +565,19 @@
        :blocking (consume-call!! o noop)
        :non-blocking (consume-call! o noop)))))
 
-(defn wait!
+(defn join!
   "Wait for `tasks`, a collection of channels, to finish in a
   non-blocking context.
   Returns nothing meaningful."
   [tasks]
-  (wait* tasks :non-blocking))
+  (join* tasks :non-blocking))
 
-(defn wait!!
+(defn join!!
   "Wait for `tasks`, a collection of channels, to finish in a
   blocking context.
   Returns nothing meaningful."
   [tasks]
-  (wait* tasks :blocking))
+  (join* tasks :blocking))
 
 (defn- wrap-cleanup
   [n cleanup]
