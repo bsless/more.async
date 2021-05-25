@@ -775,3 +775,11 @@
              (cond
                (identical? ch until) value
                (identical? ch timeout) (recur)))))))))
+
+(defmacro await!
+  "Execute `body` every `interval` with timeout `until`.
+  `body` must return a channel.
+  Execution will terminate when taking from the channel returns a
+  non-nil value or the timeout expires"
+  [interval until value & body]
+  `(wait! ~interval ~until (fn* [] ~@body) ~value))
