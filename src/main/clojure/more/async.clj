@@ -215,7 +215,7 @@
 (defn merge
   "Like [[clojure.core.async/merge]] but pipes all channels to `to`."
   ([from to]
-   (merge from to))
+   (merge from to true))
   ([from to close?]
    (let [o (a/merge from)]
      (a/pipe o to close?))))
