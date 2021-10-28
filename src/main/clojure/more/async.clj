@@ -252,6 +252,44 @@
           (let [o (get-chan! v)]
             (when (a/>! o v) (recur))))))))
 
+(defn group-by!
+  "Partition values from `from` by `kfn` and call `f` on an input channel
+  onto which values will be written and output channel to which results
+  should be produced.
+
+  The values produced into the input channel will be
+  `[(kfn v) v]`.
+
+  To handle unbounded inputs, a partition will be removed after
+  `timeout` milliseconds."
+  [from to kfn timeout f]
+  (let [ma (atom {})]
+    (letfn [(build-rec [k]
+              (fn [v]
+                (new clojure.lang.MapEntry k v)))
+            (delayed-death! [k ch]
+              (let [t (a/timeout timeout)]
+                (a/go (a/<! t) (swap! ma dissoc k) (a/close! ch))))
+            (create-chan! [k]
+              (let [ch-in (a/chan 1 (map (build-rec k)))
+                    ch-out (a/chan 1)]
+                (delayed-death! k ch-in)
+                (f ch-in ch-out)
+                (a/pipe ch-out to false)
+                (swap! ma assoc k ch-in)
+                ch-in))
+            (get-chan! [v]
+              (let [k (kfn v)]
+                (or (get @ma k) (create-chan! k))))]
+      (a/go-loop []
+        (let [v (a/<! from)]
+          (if (nil? v)
+            (let [cs (vals @ma)]
+              (merge cs to)
+              (doseq [c cs] (a/close! c)))
+            (let [o (get-chan! v)]
+              (when (a/>! o v) (recur)))))))))
+
 (defn control*
   "Wraps f with control function cf such that f will be invoked when:
   cf returns a truthy value for a value taken from ctl channel or
