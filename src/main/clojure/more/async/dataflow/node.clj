@@ -66,9 +66,11 @@
 
 ;;; BATCH
 
+(s/def ::finally-fn fn?)
+
 (s/def ::batch
   (s/keys :req [::from ::to ::size ::timeout]
-          :opt [::rf ::init-fn ::async?]))
+          :opt [::rf ::init-fn ::async? ::finally-fn]))
 
 
 (defmethod -type ::batch [_]
@@ -81,14 +83,15 @@
      timeout ::timeout
      rf ::rf
      init ::init-fn
+     finally ::finally-fn
      async? ::async?
-     :or {rf conj init (constantly [])}}
+     :or {rf conj init (constantly []) finally identity}}
     ::batch} env]
   (let [from (env from)
         to (env to)]
     (if async?
-      (ma/batch! from to size timeout rf init)
-      (a/thread (ma/batch!! from to size timeout rf init)))))
+      (ma/batch! from to size timeout rf init finally)
+      (a/thread (ma/batch!! from to size timeout rf init finally)))))
 
 (defmethod ports ::batch
   [{{to ::to from ::from} ::batch}]
