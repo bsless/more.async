@@ -153,6 +153,10 @@ channel. Produces an intermediate state only when consuming from output
 channel. Useful for maintaining internal state while processing a
 stream.
 
+### Dataflow
+
+See [dataflow](./doc/dataflow.org)
+
 ## Usage
 
 ### Dependency
