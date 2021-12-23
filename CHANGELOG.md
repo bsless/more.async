@@ -1,12 +1,13 @@
 # Change Log
 
-## [unreleased] 2021-02-04
+## [0.0.0] 2021-12-23
 
-- rename reductions* to selecting-reductions*
-- add reductions pipeline
+- Rename reductions* to selecting-reductions*
+- Add reductions pipeline
 - Add round-robin!
 - Add wide pipeline async
 - Add delay pipe
+- Add dataflow
 
 ## [0.0.7] - 2021-01-13
 

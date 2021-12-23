@@ -163,7 +163,7 @@ See [dataflow](./doc/dataflow.org)
 
 Add the following dependency in your leiningen project:
 ```clojure
-[bsless/more.async "0.0.7"]
+[bsless/more.async "0.0.8"]
 ```
 
 NOTE: breaking change as of `0.0.6`: more.async namespaces have been
